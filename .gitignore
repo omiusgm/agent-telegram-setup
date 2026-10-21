@@ -1,0 +1,11 @@
+.local/
+.upstream/
+.venv/
+__pycache__/
+*.py[cod]
+*.session*
+*.log
+.env*
+.DS_Store
+dist/
+

@@ -1,0 +1,15 @@
+# Replace BOTH absolute paths with this installation's paths.
+# No API ID, API Hash, password, phone, or session belongs here.
+[mcp_servers.telegram-personal]
+command = "/absolute/path/agent-telegram-setup/.venv/bin/python"
+args = ["/absolute/path/agent-telegram-setup/server.py"]
+startup_timeout_sec = 60
+tool_timeout_sec = 90
+enabled = true
+
+[mcp_servers.telegram-personal.env]
+AGENT_TELEGRAM_ACCESS = "read-only"
+# Optional EXISTING local SOCKS; values below are placeholders.
+# AGENT_TELEGRAM_SOCKS_HOST = "127.0.0.1"
+# AGENT_TELEGRAM_SOCKS_PORT = "1080"
+
