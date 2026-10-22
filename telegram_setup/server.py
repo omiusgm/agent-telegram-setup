@@ -5,6 +5,8 @@ import os
 import sys
 
 from .config import ROOT, UPSTREAM, check_upstream, configure_environment, connection_lock, load_credentials, prepare_private
+from .access_guard import enforce_transcription_engine
+from .permissions import load_settings
 
 
 def prepare():
@@ -23,6 +25,7 @@ def prepare():
     from telegram_mcp import tools  # noqa: F401; register tools before filtering
     from telegram_mcp.install_guard import assert_safe_distribution
     assert_safe_distribution()
+    enforce_transcription_engine(runner.mcp, load_settings())
 
     async def serve_checked():
         try:

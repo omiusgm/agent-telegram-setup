@@ -79,10 +79,9 @@ def connection_lock():
 
 
 def access_profile():
-    name = os.environ.get("AGENT_TELEGRAM_ACCESS", "read-only")
-    if name not in PROFILES:
-        raise ValueError("Unknown AGENT_TELEGRAM_ACCESS profile")
-    return name
+    from .permissions import load_settings
+    load_settings()
+    return "custom" if (private_dir() / "permissions.json").exists() else os.environ["AGENT_TELEGRAM_ACCESS"]
 
 
 def proxy_config():
@@ -97,8 +96,17 @@ def proxy_config():
 
 
 def configure_environment(data):
-    profile = access_profile()
+    from .permissions import exposed_tools, load_settings
+    permissions = load_settings()
     proxy = proxy_config()
+    engine = permissions["transcription_engine"]
+    selected_variables = {
+        "openai": ("TELEGRAM_TRANSCRIBE_OPENAI_URL", "TELEGRAM_TRANSCRIBE_OPENAI_API_KEY",
+                   "TELEGRAM_TRANSCRIBE_OPENAI_MODEL", "TELEGRAM_TRANSCRIBE_OPENAI_MAX_MB"),
+        "whisper": ("TELEGRAM_TRANSCRIBE_WHISPER_MODEL", "TELEGRAM_TRANSCRIBE_WHISPER_DEVICE",
+                    "TELEGRAM_TRANSCRIBE_WHISPER_COMPUTE_TYPE", "TELEGRAM_TRANSCRIBE_WHISPER_MODEL_DIR"),
+    }.get(engine, ())
+    transcription_env = {name: os.environ[name] for name in selected_variables if name in os.environ}
     for key in list(os.environ):
         if key.startswith("TELEGRAM_"):
             del os.environ[key]
@@ -111,13 +119,16 @@ def configure_environment(data):
         "TELEGRAM_DEVICE_MODEL": DEVICE,
         "TELEGRAM_SYSTEM_VERSION": "local",
         "TELEGRAM_APP_VERSION": "0.1.0",
-        "TELEGRAM_EXPOSED_TOOLS": PROFILES[profile],
-        "TELEGRAM_TRANSCRIBE": "off",
+        "TELEGRAM_EXPOSED_TOOLS": exposed_tools(permissions),
+        "TELEGRAM_TRANSCRIBE": "on-demand" if "transcribe" in permissions["enabled"] else "off",
+        "TELEGRAM_TRANSCRIBE_ENGINE": permissions["transcription_engine"] or "telegram",
+        "TELEGRAM_TOOL_TIMEOUT_SECONDS": "240",
         "TELEGRAM_FLOOD_SLEEP_THRESHOLD": "0",
         "TELEGRAM_SERVER_ROOTS_ONLY": "1",
         "TELEGRAM_ALIASES_FILE": str(folder / "aliases.json"),
         "MCP_TRANSPORT": "stdio",
     })
+    os.environ.update(transcription_env)
     if proxy:
         os.environ.update(TELEGRAM_PROXY_TYPE="socks5", TELEGRAM_PROXY_HOST=proxy["addr"],
                           TELEGRAM_PROXY_PORT=str(proxy["port"]))

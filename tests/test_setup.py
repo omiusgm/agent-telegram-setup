@@ -14,7 +14,8 @@ from telegram_setup import config, login
 class ConfigurationTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
-        self.env = patch.dict(os.environ, {"AGENT_TELEGRAM_HOME": self.temp.name}, clear=True)
+        self.env = patch.dict(os.environ, {"AGENT_TELEGRAM_HOME": self.temp.name,
+                                           "AGENT_TELEGRAM_ACCESS": "read-only"}, clear=True)
         self.env.start()
 
     def tearDown(self):
@@ -51,7 +52,8 @@ class ConfigurationTests(unittest.TestCase):
     def test_default_read_only_and_parent_environment_is_not_inherited(self):
         os.environ.update(TELEGRAM_STRING_SESSION="synthetic-parent", TELEGRAM_EXPOSED_TOOLS="all")
         config.configure_environment({"api_id": 12345, "api_hash": "0" * 32})
-        self.assertEqual(os.environ["TELEGRAM_EXPOSED_TOOLS"], "read-only")
+        self.assertTrue(os.environ["TELEGRAM_EXPOSED_TOOLS"].startswith("read-only-"))
+        self.assertIn("transcribe_voice", os.environ["TELEGRAM_EXPOSED_TOOLS"])
         self.assertNotIn("TELEGRAM_STRING_SESSION", os.environ)
         self.assertEqual(os.environ["TELEGRAM_TRANSCRIBE"], "off")
 

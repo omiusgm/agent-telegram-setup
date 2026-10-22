@@ -7,8 +7,9 @@ ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_FILES = (
     ".gitignore", "README.md", "AGENTS.md", "LICENSE", "bootstrap.py", "server.py", "verify_mcp.py",
     "telegram_setup/__init__.py", "telegram_setup/config.py", "telegram_setup/login.py", "telegram_setup/server.py",
+    "telegram_setup/permissions.py", "telegram_setup/access_guard.py", "tests/test_permissions.py",
     "tests/test_setup.py", "tests/offline_server.py", "scripts/check_public.py",
-    "docs/agent-handoff.md", "docs/troubleshooting.md", "docs/sending.md", "docs/verification.md",
+    "docs/agent-handoff.md", "docs/troubleshooting.md", "docs/sending.md", "docs/verification.md", "docs/permissions.md",
     "examples/global-AGENTS.md", "examples/mcp-config.toml",
 )
 FORBIDDEN = (

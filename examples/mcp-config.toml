@@ -4,11 +4,13 @@
 command = "/absolute/path/agent-telegram-setup/.venv/bin/python"
 args = ["/absolute/path/agent-telegram-setup/server.py"]
 startup_timeout_sec = 60
-tool_timeout_sec = 90
+tool_timeout_sec = 300
 enabled = true
 
 [mcp_servers.telegram-personal.env]
-AGENT_TELEGRAM_ACCESS = "read-only"
+# Permissions are chosen during bootstrap and stored in .local/permissions.json.
+# Change them with: .venv/bin/python -m telegram_setup.permissions
+# Legacy AGENT_TELEGRAM_ACCESS profiles are only a fallback without that file.
 # Optional EXISTING local SOCKS; values below are placeholders.
 # AGENT_TELEGRAM_SOCKS_HOST = "127.0.0.1"
 # AGENT_TELEGRAM_SOCKS_PORT = "1080"
