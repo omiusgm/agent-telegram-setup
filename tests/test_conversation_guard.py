@@ -278,6 +278,40 @@ class BrokerTests(Fixture, unittest.IsolatedAsyncioTestCase):
         self.assertFalse(await self.broker.dispatch_once())
         self.assertEqual(sum(name == "reply_to_message" for name, _ in self.backend.calls), 1)
 
+    async def test_revocation_during_preparation_stops_the_actual_write(self):
+        await self.broker.read()
+        row = self.store.propose(1, "Спасибо")
+        self.store.approve(row["id"], row["hash"])
+        original = self.backend.call_tool
+
+        async def revoke_during_read(name, args):
+            result = await original(name, args)
+            if name == "get_history":
+                self.store.revoke()
+            return result
+
+        self.backend.call_tool = revoke_during_read
+        await self.broker.dispatch_once()
+        self.assertEqual(self.store.get(row["id"])["status"], "rejected")
+        self.assertFalse(any(name == "reply_to_message" for name, _ in self.backend.calls))
+
+    async def test_action_expiry_during_preparation_stops_the_actual_write(self):
+        await self.broker.read()
+        row = self.store.propose(1, "Спасибо")
+        self.store.approve(row["id"], row["hash"])
+        original = self.backend.call_tool
+
+        async def expire_during_read(name, args):
+            result = await original(name, args)
+            if name == "get_history":
+                self.now = row["expires"] + 1
+            return result
+
+        self.backend.call_tool = expire_during_read
+        await self.broker.dispatch_once()
+        self.assertEqual(self.store.get(row["id"])["status"], "rejected")
+        self.assertFalse(any(name == "reply_to_message" for name, _ in self.backend.calls))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -93,6 +93,11 @@ class Broker:
             if not isinstance(before, dict) or not isinstance(before.get("results"), list):
                 raise Denied("send_baseline_unavailable")
             baseline = max((m.get("id", 0) for m in before["results"] if type(m.get("id")) is int), default=0)
+            try:
+                self.store.validate_before_send(row["id"])
+            except Denied as exc:
+                self.store.cancel_before_send(row["id"], str(exc))
+                return True
             result = unpack(await self.upstream.call_tool("reply_to_message", args))
             match = re.search(r"message_id=(\d+)", result) if isinstance(result, str) else None
             recent = unpack(await self.upstream.call_tool("get_history", {"chat_id": action["chat_id"], "limit": 10}))

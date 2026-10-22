@@ -160,6 +160,19 @@ class Store:
             db.execute("UPDATE actions SET status=?,result_id=?,reason=? WHERE id=? AND status='sending'",
                        ("sent" if message_id is not None else "uncertain_do_not_retry", message_id, reason, ident))
 
+    def validate_before_send(self, ident):
+        """Recheck after asynchronous preparation, immediately before the write."""
+        with self.transaction() as db:
+            self.check(db)
+            row = db.execute("SELECT * FROM actions WHERE id=?", (ident,)).fetchone()
+            if (row is None or row["status"] != "sending" or row["expires"] <= self.clock()
+                    or not self.integrity(row)):
+                raise Denied("claimed_action_stale_or_changed")
+
+    def cancel_before_send(self, ident, reason):
+        with self.transaction() as db:
+            db.execute("UPDATE actions SET status='rejected',reason=? WHERE id=? AND status='sending'", (reason, ident))
+
     def integrity(self, row):
         try:
             payload = json.loads(row["payload"])
