@@ -1,0 +1,9 @@
+# For a SEPARATE restricted worker, not an unrestricted general-purpose chat.
+# MCP configuration alone does not disable shell, filesystem, browser, network,
+# other MCPs, UI remote-image loading, or access to operator state.
+[mcp_servers.telegram-delegated-contact]
+command = "/absolute/path/agent-telegram-setup/.venv/bin/python"
+args = ["/absolute/path/agent-telegram-setup/guard_server.py", "--home", "/absolute/operator/guard-contact", "serve"]
+startup_timeout_sec = 60
+tool_timeout_sec = 90
+enabled = true
