@@ -134,6 +134,7 @@ def configure_environment(data):
                           TELEGRAM_PROXY_PORT=str(proxy["port"]))
     if data.get("username"):
         os.environ["TELEGRAM_EXPECTED_USERNAME"] = data["username"]
+    return permissions
 
 
 def check_upstream():

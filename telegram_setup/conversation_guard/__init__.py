@@ -1,3 +1,3 @@
-"""Experimental, transport-neutral conversation action broker. Not a host sandbox."""
+"""Experimental snapshot reader and draft MCP. No live transport or host sandbox."""
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"

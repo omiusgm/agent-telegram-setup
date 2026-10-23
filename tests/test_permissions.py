@@ -12,7 +12,7 @@ from mcp.types import ToolAnnotations
 
 import bootstrap
 from telegram_setup import config, permissions
-from telegram_setup.access_guard import enforce_transcription_engine
+from telegram_setup.access_guard import enforce_transcription_engine, enforce_permission_snapshot
 
 
 def selection(*enabled, engine=None):
@@ -130,6 +130,52 @@ class PermissionTests(unittest.TestCase):
             bootstrap.main()
         question.assert_not_called()
         self.assertEqual(permissions.load_settings(), chosen)
+
+
+class SharedPermissionSnapshotTests(unittest.IsolatedAsyncioTestCase):
+    async def test_revoked_permission_blocks_a_previously_exposed_operation(self):
+        from mcp.server.fastmcp.exceptions import ToolError
+        with tempfile.TemporaryDirectory() as home, patch.dict(os.environ,
+                {'AGENT_TELEGRAM_HOME': home}, clear=True):
+            chosen = permissions.save_settings(selection('read', 'send-text'))
+            server = FastMCP('synthetic-shared-permissions')
+            operation = AsyncMock(return_value='synthetic-sent')
+
+            @server.tool()
+            async def send_message(text: str) -> str:
+                return await operation(text)
+
+            enforce_permission_snapshot(server, chosen)
+            await server.call_tool('send_message', {'text': 'Before revocation'})
+            operation.assert_awaited_once_with('Before revocation')
+            operation.reset_mock()
+            permissions.save_settings(selection('read'))
+            with self.assertRaisesRegex(ToolError, 'Permissions changed'):
+                await server.call_tool('send_message', {'text': 'Must not execute'})
+            operation.assert_not_awaited()
+
+    async def test_missing_or_corrupt_permission_file_fails_before_operation(self):
+        from mcp.server.fastmcp.exceptions import ToolError
+        with tempfile.TemporaryDirectory() as home, patch.dict(os.environ,
+                {'AGENT_TELEGRAM_HOME': home}, clear=True):
+            chosen = permissions.save_settings(selection('read'))
+            server = FastMCP('synthetic-invalid-permissions')
+            operation = AsyncMock(return_value='synthetic-read')
+
+            @server.tool(annotations=ToolAnnotations(readOnlyHint=True))
+            async def synthetic_read() -> str:
+                return await operation()
+
+            enforce_permission_snapshot(server, chosen)
+            path = Path(home) / 'permissions.json'
+            for content in ('invalid JSON', None):
+                if content is None:
+                    path.unlink()
+                else:
+                    path.write_text(content)
+                with self.subTest(content=content), self.assertRaisesRegex(ToolError, 'Permissions unavailable'):
+                    await server.call_tool('synthetic_read', {})
+            operation.assert_not_awaited()
 
 
 class TranscriptionGuardTests(unittest.IsolatedAsyncioTestCase):

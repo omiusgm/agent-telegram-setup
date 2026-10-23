@@ -12,7 +12,7 @@ from pathlib import Path
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from telegram_setup.config import ROOT, load_credentials
+from telegram_setup.config import ROOT
 from telegram_setup.permissions import CAPABILITIES, PRESETS, load_settings, validate_settings
 
 
@@ -21,9 +21,7 @@ async def verify(live=False, selection=None, label="read-only"):
         env = dict(os.environ)
         if live:
             selection = load_settings()
-            if not load_credentials().get("authorized"):
-                raise RuntimeError("Сначала завершите локальный вход.")
-            args = ["-m", "telegram_setup.server"]
+            args = [str(ROOT / "server.py")]
         else:
             selection = validate_settings(selection or {"schema_version": 1, "enabled": ["read"],
                                                        "transcription_engine": None})
@@ -40,7 +38,7 @@ async def verify(live=False, selection=None, label="read-only"):
                     await session.initialize()
                     available = (await session.list_tools()).tools
                     names = {tool.name for tool in available}
-                    assert {"list_chats", "get_messages"} <= names
+                    assert {"list_chats", "get_messages", "read_history_page", "read_owned_inventory"} <= names
                     selected = set(selection["enabled"])
                     for capability, (_, _, tools) in CAPABILITIES.items():
                         for name in tools:

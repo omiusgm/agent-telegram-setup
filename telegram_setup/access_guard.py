@@ -1,7 +1,29 @@
 """Enforce the selected transcription destination before any provider call."""
 
 import json
+from functools import wraps
 from typing import Optional, Union
+
+
+def enforce_permission_snapshot(mcp, settings):
+    """Refuse stale permissions in a backend that outlives its stdio clients."""
+    from mcp.server.fastmcp.exceptions import ToolError
+    from .permissions import load_settings, validate_settings
+
+    expected = validate_settings(settings)
+    original = mcp._tool_manager.call_tool
+
+    @wraps(original)
+    async def guarded(*args, **kwargs):
+        try:
+            current = load_settings()
+        except (OSError, ValueError, RuntimeError):
+            raise ToolError('Permissions unavailable; restart the shared backend after fixing the selection') from None
+        if current != expected:
+            raise ToolError('Permissions changed; restart the shared backend before further calls')
+        return await original(*args, **kwargs)
+
+    mcp._tool_manager.call_tool = guarded
 
 
 def enforce_transcription_engine(mcp, settings):

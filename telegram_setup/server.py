@@ -1,12 +1,11 @@
-"""Start the pinned upstream over stdio with a single local session."""
+"""Prepare the pinned upstream; the shared backend owns the account lock."""
 
 import asyncio
 import os
 import sys
 
 from .config import ROOT, UPSTREAM, check_upstream, configure_environment, connection_lock, load_credentials, prepare_private
-from .access_guard import enforce_transcription_engine
-from .permissions import load_settings
+from .access_guard import enforce_transcription_engine, enforce_permission_snapshot
 
 
 def prepare():
@@ -14,7 +13,7 @@ def prepare():
     data = load_credentials()
     if not data.get("authorized"):
         raise RuntimeError("Сначала завершите локальный вход: python -m telegram_setup.login")
-    configure_environment(data)
+    settings = configure_environment(data)
     files = prepare_private() / "files"
     files.mkdir(exist_ok=True, mode=0o700)
     files.chmod(0o700)
@@ -23,9 +22,16 @@ def prepare():
     sys.argv = [str(UPSTREAM / "main.py"), str(files)]
     from telegram_mcp import runner
     from telegram_mcp import tools  # noqa: F401; register tools before filtering
+    from telegram_mcp import runtime
     from telegram_mcp.install_guard import assert_safe_distribution
     assert_safe_distribution()
-    enforce_transcription_engine(runner.mcp, load_settings())
+    from .history_pages import register_history_page
+    from .owned_inventory import register_owned_inventory
+    register_history_page(runtime)
+    register_owned_inventory(runtime)
+    enforce_transcription_engine(runner.mcp, settings)
+    enforce_permission_snapshot(runner.mcp, settings)
+    runner._telegram_setup_permissions = settings
 
     async def serve_checked():
         try:
