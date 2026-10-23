@@ -8,10 +8,7 @@ import uuid
 from pathlib import Path
 
 from .policy import canonical, digest, validate_text
-
-
-class Denied(ValueError):
-    pass
+from .errors import Denied
 
 
 class Store:
