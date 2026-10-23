@@ -11,6 +11,14 @@ PUBLIC_FILES = (
     "tests/test_setup.py", "tests/offline_server.py", "scripts/check_public.py",
     "docs/agent-handoff.md", "docs/troubleshooting.md", "docs/sending.md", "docs/verification.md", "docs/permissions.md",
     "examples/global-AGENTS.md", "examples/mcp-config.toml",
+    "guard_server.py", "verify_guard.py", "tests/test_conversation_guard.py", "tests/fake_guard_upstream.py",
+    "telegram_setup/conversation_guard/__init__.py", "telegram_setup/conversation_guard/__main__.py",
+    "telegram_setup/conversation_guard/policy.py", "telegram_setup/conversation_guard/store.py",
+    "telegram_setup/conversation_guard/broker.py", "telegram_setup/conversation_guard/server.py",
+    "docs/conversation-guard.md", "docs/prompt-injection-research.md",
+    "examples/guard-templates.json", "examples/guarded-mcp-config.toml",
+    "telegram_setup/conversation_guard/reader.py", "telegram_setup/conversation_guard/errors.py",
+    "tests/guard_fixtures.py", "tests/verify_read_draft.py", "tests/test_reader_boundary.py",
 )
 FORBIDDEN = (
     re.compile(r"/(?:Users|home)/[^\s/]+/"),

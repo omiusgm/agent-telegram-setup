@@ -1,0 +1,9 @@
+# Offline snapshot/drafts only. No credentials broker, approval API or writer.
+# This does not isolate the host or remove its shell/other MCPs.
+# To demand isolation, add --require-isolation: startup currently fails closed.
+[mcp_servers.telegram-snapshot-drafts]
+command = "/absolute/path/agent-telegram-setup/.venv/bin/python"
+args = ["/absolute/path/agent-telegram-setup/guard_server.py", "--home", "/absolute/reader/state", "serve"]
+startup_timeout_sec = 60
+tool_timeout_sec = 90
+enabled = false

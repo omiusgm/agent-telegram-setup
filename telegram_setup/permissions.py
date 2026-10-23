@@ -105,6 +105,8 @@ def show(data):
         print(f"[{'x' if name in data['enabled'] else ' '}] {title} ({name})")
     if data["transcription_engine"]:
         print("Распознавание: " + ENGINES[data["transcription_engine"]])
+    if set(data["enabled"]) & {"send-text", "send-files", "forward", "edit", "delete"}:
+        print("Если агент будет самостоятельно вести диалоги: есть риск промпт-инъекций из сообщений собеседника. Перед делегированием выберите отдельный ограниченный режим; см. docs/conversation-guard.md. Разовые поручения работают в выбранных правах.")
 
 
 def choose_interactively(input_fn=None):
