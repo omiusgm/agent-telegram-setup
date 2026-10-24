@@ -1,0 +1,11 @@
+# Client template for the implemented restricted Linux reader gateway.
+# Real account/tunnel acceptance is a separate installation step.
+# Replace the invalid URL only after agreeing the protected network route.
+# The operator supplies a distinct token through the client's environment.
+# Do not paste a raw token into this file or reuse a Telegram session/API Hash.
+[mcp_servers.telegram-linux-reader]
+url = "https://telegram-hub.example.invalid/mcp"
+bearer_token_env_var = "AGENT_TELEGRAM_CODEX_TOKEN"
+enabled = false
+startup_timeout_sec = 30
+tool_timeout_sec = 60

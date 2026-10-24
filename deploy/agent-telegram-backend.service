@@ -1,0 +1,24 @@
+[Unit]
+Description=Single personal Telegram MCP backend
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=0
+ConditionPathExists=%h/.local/share/agent-telegram-mcp/credentials.json
+
+[Service]
+Type=simple
+WorkingDirectory=%h/services/agent-telegram-mcp
+Environment=AGENT_TELEGRAM_HOME=%h/.local/share/agent-telegram-mcp
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=%h/services/agent-telegram-mcp/.venv/bin/python -m telegram_setup.shared --persistent
+Restart=on-failure
+RestartSec=10s
+RestartSteps=5
+RestartMaxDelaySec=120s
+TimeoutStopSec=60
+UMask=0077
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target

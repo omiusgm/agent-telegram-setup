@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "telegram-linux-reader": {
+      "type": "http",
+      "url": "https://telegram-hub.example.invalid/mcp",
+      "headers": {
+        "Authorization": "Bearer ${AGENT_TELEGRAM_CLAUDE_TOKEN}"
+      }
+    }
+  }
+}

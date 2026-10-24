@@ -47,6 +47,8 @@ def open_connection():
     connection = connect(path)
     if connection is not None:
         return connection
+    if os.environ.get('AGENT_TELEGRAM_MANAGED_BACKEND') == '1':
+        raise RuntimeError('Managed Telegram backend is not ready; wait for its service')
     deadline = time.monotonic() + 60
     with (folder / 'shared-start.lock').open('a') as lock:
         while True:

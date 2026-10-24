@@ -24,6 +24,15 @@ PUBLIC_FILES = (
     "tests/test_shared.py", "tests/offline_shared.py", "tests/test_read_extensions.py",
     "docs/shared-connection.md", "docs/history-and-inventory.md", "docs/notes-migration.md",
     "CHANGELOG.md", "mcp_client.py",
+    "docs/linux-multi-agent-plan.md", "examples/remote-reader-codex.toml",
+    "examples/remote-reader-claude.mcp.json",
+    "gateway_server.py", "telegram_setup/agents.py", "telegram_setup/reader_gateway.py",
+    "telegram_setup/gateway.py", "telegram_setup/dialog_pages.py",
+    "tests/test_agent_gateway.py", "tests/test_gateway_http.py", "tests/test_dialog_pages.py",
+    "examples/agents-readonly.json", "deploy/agent-telegram-backend.service",
+    "deploy/agent-telegram-reader.service",
+    "stage_linux.py", "docs/linux-service.md",
+    "tests/offline_gateway.py", "tests/test_gateway_stdio.py",
 )
 FORBIDDEN = (
     re.compile(r"/(?:Users|home)/[^\s/]+/"),

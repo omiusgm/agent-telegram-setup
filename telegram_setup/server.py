@@ -26,8 +26,10 @@ def prepare():
     from telegram_mcp.install_guard import assert_safe_distribution
     assert_safe_distribution()
     from .history_pages import register_history_page
+    from .dialog_pages import register_dialog_page
     from .owned_inventory import register_owned_inventory
     register_history_page(runtime)
+    register_dialog_page(runtime)
     register_owned_inventory(runtime)
     enforce_transcription_engine(runner.mcp, settings)
     enforce_permission_snapshot(runner.mcp, settings)

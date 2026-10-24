@@ -1,5 +1,6 @@
 """One session holder, multiple independent MCP sessions, no TCP listener."""
 
+import argparse
 import sys
 
 import anyio
@@ -86,14 +87,18 @@ async def serve_socket(mcp, path, *, idle_seconds=IDLE_SECONDS, keep_alive=None)
         path.unlink(missing_ok=True)
 
 
-def main():
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--persistent', action='store_true',
+                        help='Keep the shared backend alive under a Linux service manager')
+    options = parser.parse_args(argv)
     try:
         with connection_lock():
             runner = prepare()
 
             async def shared_transport(_transport):
                 await serve_socket(runner.mcp, socket_path(),
-                    keep_alive=lambda: should_keep_alive(runner._telegram_setup_permissions))
+                    keep_alive=lambda: options.persistent or should_keep_alive(runner._telegram_setup_permissions))
 
             runner._serve = shared_transport
             runner.main()

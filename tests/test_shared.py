@@ -41,6 +41,36 @@ async def identity(session):
 
 
 class SharedTests(unittest.IsolatedAsyncioTestCase):
+    async def test_persistent_service_stays_alive_until_released(self):
+        from mcp.server.fastmcp import FastMCP
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / 'mcp.sock'
+            persistent = [True]
+            task = asyncio.create_task(serve_socket(FastMCP('persistent-fixture'), path,
+                idle_seconds=0.05, keep_alive=lambda: persistent[0]))
+            try:
+                await asyncio.sleep(0.2)
+                self.assertTrue(path.exists())
+                self.assertFalse(task.done())
+                persistent[0] = False
+                await asyncio.wait_for(task, 2)
+                self.assertFalse(path.exists())
+            finally:
+                if not task.done():
+                    task.cancel(); await asyncio.gather(task, return_exceptions=True)
+
+    def test_managed_backend_never_spawns_a_competing_process(self):
+        from telegram_setup import relay
+        with tempfile.TemporaryDirectory() as home, patch.dict(os.environ,
+                {'AGENT_TELEGRAM_HOME': home, 'AGENT_TELEGRAM_MANAGED_BACKEND': '1'}):
+            path = socket_path()
+            try:
+                with patch.object(relay, 'connect', return_value=None), patch.object(relay.subprocess, 'Popen') as spawn:
+                    with self.assertRaises(RuntimeError): relay.open_connection()
+                    spawn.assert_not_called()
+            finally:
+                path.parent.rmdir()
+
     async def test_pending_inventory_survives_idle_between_clients(self):
         from mcp.server.fastmcp import FastMCP
         with tempfile.TemporaryDirectory() as temporary, patch.dict(

@@ -1,0 +1,25 @@
+[Unit]
+Description=Authenticated loopback Telegram reader MCP
+Requires=agent-telegram-backend.service
+After=agent-telegram-backend.service
+StartLimitIntervalSec=0
+ConditionPathExists=%h/.local/share/agent-telegram-mcp/agents.json
+
+[Service]
+Type=simple
+WorkingDirectory=%h/services/agent-telegram-mcp
+Environment=AGENT_TELEGRAM_HOME=%h/.local/share/agent-telegram-mcp
+Environment=AGENT_TELEGRAM_MANAGED_BACKEND=1
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=%h/services/agent-telegram-mcp/.venv/bin/python gateway_server.py --transport streamable-http --port 8791
+Restart=on-failure
+RestartSec=10s
+RestartSteps=5
+RestartMaxDelaySec=120s
+TimeoutStopSec=60
+UMask=0077
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target
