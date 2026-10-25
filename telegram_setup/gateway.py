@@ -7,17 +7,16 @@ import os
 import re
 import sys
 from datetime import timedelta
-from pathlib import Path
 
-from mcp import ClientSession, StdioServerParameters
+from mcp import ClientSession
 from mcp.client.stdio import stdio_client
 from mcp.server.fastmcp import Context, FastMCP
 from mcp.types import ToolAnnotations
 from pydantic import StrictInt
 
 from .agents import AgentRegistry, AccessDenied
-from .client import text_payload
-from .config import ROOT, private_dir
+from .client import relay_parameters, text_payload
+from .config import private_dir
 from .reader_gateway import ReaderGateway
 
 logging.getLogger('mcp').setLevel(logging.WARNING)
@@ -44,8 +43,7 @@ class UpstreamBridge:
 @contextlib.asynccontextmanager
 async def upstream_connection():
     # Reuse the normal relay: no credentials or Telegram session are loaded here.
-    params = StdioServerParameters(command=sys.executable,
-        args=[str(ROOT / 'server.py')], cwd=str(ROOT))
+    params = relay_parameters()
     with open(os.devnull, 'w') as stderr:
         async with stdio_client(params, errlog=stderr) as (reader, writer):
             async with ClientSession(reader, writer,

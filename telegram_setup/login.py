@@ -31,7 +31,7 @@ def api_credentials():
 
 async def password_login(client):
     for _ in range(3):
-        password = getpass.getpass("Пароль двухэтапной защиты Telegram (скрыто): ")
+        password = await asyncio.to_thread(getpass.getpass, "Пароль двухэтапной защиты Telegram (скрыто): ")
         try:
             await client.sign_in(password=password)
             return
@@ -82,7 +82,7 @@ async def qr_login(client, image_path=None):
     raise RuntimeError("Время входа истекло. Запустите вход заново.")
 
 
-async def authorize(data, phone_mode=False, image_path=None):
+async def authorize(data, phone_mode=False, image_path=None, *, login_flow=None, announce=print):
     client = TelegramClient(str(prepare_private() / "account"), data["api_id"], data["api_hash"],
                             device_model=DEVICE, system_version="local", app_version="0.1.0",
                             proxy=proxy_config(), timeout=15, connection_retries=2,
@@ -90,12 +90,14 @@ async def authorize(data, phone_mode=False, image_path=None):
     try:
         await asyncio.wait_for(client.connect(), timeout=45)
         if not await client.is_user_authorized():
-            if phone_mode:
-                phone = getpass.getpass("Телефон с кодом страны (скрыто): ").strip()
+            if login_flow is not None:
+                await login_flow(client)
+            elif phone_mode:
+                phone = (await asyncio.to_thread(getpass.getpass, "Телефон с кодом страны (скрыто): ")).strip()
                 code = None
                 try:
                     await client.send_code_request(phone)
-                    code = getpass.getpass("Код из Telegram (скрыто): ").replace(" ", "")
+                    code = (await asyncio.to_thread(getpass.getpass, "Код из Telegram (скрыто): ")).replace(" ", "")
                     try:
                         await client.sign_in(phone=phone, code=code)
                     except errors.SessionPasswordNeededError:
@@ -109,7 +111,7 @@ async def authorize(data, phone_mode=False, image_path=None):
             raise RuntimeError("Нужен ожидаемый личный аккаунт. Настройки не заменены.")
         data.update(authorized=True, user_id=me.id, username=me.username)
         save_credentials(data)
-        print("Вход сохранён. Устройство в Telegram: " + DEVICE)
+        announce("Вход сохранён. Устройство в Telegram: " + DEVICE)
     finally:
         await client.disconnect()
         if image_path:

@@ -29,6 +29,8 @@ Bot token не заменяет API ID / API Hash и пользовательс�
 
 ## Установка и вход
 
+Для владельца добавлен [мастер на localhost](docs/web-setup.md): выбор возможностей, установка зависимостей проекта, QR или телефон/код, скрытый ввод 2FA и проверка MCP в браузере. На Mac в папке проекта есть `TelegramSetup.app`; на Linux агент подготавливает ярлык. Git, uv и Python 3.11+ предварительно готовит устанавливающий агент; настоящий вход через новый GUI и Finder-launcher ещё требуют проверки. Ниже сохранён способ через Terminal.
+
 ```bash
 git clone https://github.com/omiusgm/agent-telegram-setup.git
 cd agent-telegram-setup
@@ -126,6 +128,7 @@ OS-изоляция не развёрнута. У чата с терминало
 
 ## Другие инструкции
 
+- [Браузерный мастер: QR, телефон/код, 2FA и выбор возможностей](docs/web-setup.md)
 - [Выбор прав, скачивание и способы расшифровки](docs/permissions.md)
 - [Одно подключение для нескольких чатов и MCP-клиент](docs/shared-connection.md)
 - [Linux-сервис, права агентов и подключение dot](docs/linux-service.md)

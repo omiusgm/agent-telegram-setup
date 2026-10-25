@@ -2,6 +2,7 @@ import asyncio
 import os
 import stat
 import tempfile
+import threading
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -72,6 +73,19 @@ class ConfigurationTests(unittest.TestCase):
 
 
 class QRTests(unittest.IsolatedAsyncioTestCase):
+    async def test_hidden_terminal_input_does_not_block_telegram_event_loop(self):
+        heartbeat = threading.Event()
+        responsive = []
+        def hidden_input(_prompt):
+            responsive.append(heartbeat.wait(.5))
+            return 'synthetic-password'
+        asyncio.get_running_loop().call_later(.02, heartbeat.set)
+        client = type('Fake', (), {'sign_in': AsyncMock()})()
+        with patch.object(login.getpass, 'getpass', side_effect=hidden_input):
+            await login.password_login(client)
+        self.assertEqual(responsive, [True])
+        client.sign_in.assert_awaited_once()
+
     async def test_existing_session_cannot_replace_expected_owner(self):
         me = type("User", (), {"bot": False, "id": 2000})()
         fake = type("Fake", (), {"connect": AsyncMock(), "is_user_authorized": AsyncMock(return_value=True),

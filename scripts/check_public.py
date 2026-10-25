@@ -33,6 +33,13 @@ PUBLIC_FILES = (
     "deploy/agent-telegram-reader.service",
     "stage_linux.py", "docs/linux-service.md",
     "tests/offline_gateway.py", "tests/test_gateway_stdio.py",
+    "tests/test_client_environment.py",
+    "setup_web.py", "telegram_setup/web_setup.py", "telegram_setup/web_login.py",
+    "telegram_setup/web_assets/index.html", "telegram_setup/web_assets/app.js",
+    "telegram_setup/web_assets/style.css", "tests/test_web_setup.py",
+    "TelegramSetup.app/Contents/Info.plist", "TelegramSetup.app/Contents/MacOS/run-setup",
+    "scripts/create_linux_launcher.py",
+    "docs/web-setup.md",
 )
 FORBIDDEN = (
     re.compile(r"/(?:Users|home)/[^\s/]+/"),

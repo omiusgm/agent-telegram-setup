@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Подключить Telegram · Агент Ёж</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <main class="shell">
+    <aside>
+      <div class="brand">Агент Ёж <span>TELEGRAM MCP</span></div>
+      <h1>Ваш Telegram.<br>Ваши агенты.</h1>
+      <p>Один вход на вашем компьютере, понятные возможности для помощника.</p>
+      <nav aria-label="Шаги подключения">
+        <button class="step" data-step="1"><b>1</b><span>Возможности<small>Вы решаете, что разрешить</small></span></button>
+        <button class="step" data-step="2"><b>2</b><span>Вход в Telegram<small>QR или телефон и код</small></span></button>
+        <button class="step" data-step="3"><b>3</b><span>Проверка<small>Настоящий вызов MCP</small></span></button>
+      </nav>
+      <p class="local">● Локальный мастер<br><small>Ключи и сессия остаются на компьютере, где запущен MCP.</small></p>
+    </aside>
+    <article>
+      <header><span id="badge">Подготовка</span><button id="close" class="quiet">Закрыть мастер</button></header>
+      <div id="notice" class="notice" role="status" aria-live="polite">Загружаем состояние установки…</div>
+      <section id="step-1" hidden>
+        <h2>Что разрешить агенту?</h2>
+        <p>Выбор сохраняется отдельно от входа в аккаунт. Наличие возможности не означает поручение её использовать.</p>
+        <form id="permissions-form">
+          <div id="capabilities"></div>
+          <label id="engine-row" hidden>Как расшифровывать голосовые
+            <select id="engine"><option value="">Выберите способ</option><option value="telegram">Средствами Telegram</option><option value="whisper">Локальный Whisper</option><option value="groq">Через Groq</option><option value="openai">Свой OpenAI-совместимый сервис</option></select>
+            <small>Для внешнего сервиса аудио передаётся выбранному провайдеру. Его адрес и ключ или локальная модель настраиваются отдельно.</small>
+          </label>
+          <p id="prerequisites" class="hint"></p>
+          <button id="install" class="primary" type="submit">Подготовить MCP с выбранными правами</button>
+          <p class="hint">Загрузятся закреплённые зависимости проекта. Текущий Telegram и системный Python сохраняются.</p>
+        </form>
+      </section>
+      <section id="step-2" hidden>
+        <h2>Подключите личный Telegram</h2>
+        <p>Используйте аккаунт, в который уже вошли на телефоне.</p>
+        <div id="api-fields" class="card" hidden>
+          <h3>Ключи вашего приложения</h3>
+          <p>Откройте <a href="https://my.telegram.org/apps" target="_blank" rel="noreferrer">my.telegram.org/apps</a> → API development tools. Пример названия: Personal Assistant; платформа Desktop.</p>
+          <label>API ID<input id="api-id" type="password" inputmode="numeric" autocomplete="off" placeholder="Число из кабинета Telegram"></label>
+          <label>API Hash<input id="api-hash" type="password" autocomplete="off" placeholder="Строка из кабинета Telegram"></label>
+          <small>Введите только здесь, в локальном мастере. В чат агенту ключи не нужны.</small>
+        </div>
+        <p id="api-ready" class="hint" hidden>Ключи приложения уже сохранены. Повторно вводить их не нужно.</p>
+        <div class="actions" id="login-actions">
+          <button id="login-qr" class="primary">Войти по QR</button>
+          <button id="login-phone" class="secondary">По телефону и коду</button>
+        </div>
+        <div id="qr-panel" class="card qr" hidden>
+          <img id="qr-image" alt="QR для входа в личный Telegram">
+          <div><h3>Отсканируйте в Telegram</h3><p>На телефоне: <strong>Настройки → Устройства → Подключить устройство</strong>.</p><p class="hint">Истёкший QR обновится сам. Обычная камера телефона для этого входа не подходит.</p></div>
+        </div>
+        <form id="secret-form" class="card" hidden>
+          <label id="secret-label" for="secret">Пароль</label>
+          <input id="secret" type="password" autocomplete="off" required>
+          <p id="secret-help" class="hint"></p>
+          <button class="primary" type="submit">Продолжить</button>
+        </form>
+        <p id="login-done" class="success" hidden>✓ Вход сохранён. Можно проверить MCP.</p>
+      </section>
+      <section id="step-3" hidden>
+        <h2>Убедимся, что всё работает</h2>
+        <p>Проверка запустит MCP и прочитает служебную информацию о вашем аккаунте. Переписка и сообщения в этой проверке не отправляются.</p>
+        <div class="card"><p id="check-result">После входа нажмите кнопку ниже.</p><button id="check" class="primary">Проверить подключение</button></div>
+        <div id="complete" hidden>
+          <h3>Telegram готов для локального MCP</h3>
+          <p>Авторизация сохранена. Следующие запуски используют тот же вход.</p>
+          <p class="hint">Для удалённого агента ещё нужны отдельный доступ, защищённый маршрут и подключение плагина. Успешная локальная проверка сама по себе их не создаёт.</p>
+        </div>
+      </section>
+      <footer>Личный MTProto-аккаунт · macOS / Linux · <a href="https://github.com/omiusgm/agent-telegram-setup" target="_blank" rel="noreferrer">Инструкция проекта</a></footer>
+    </article>
+  </main>
+</body>
+</html>

@@ -16,6 +16,24 @@ from mcp.client.stdio import stdio_client
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# The MCP SDK deliberately inherits only a small OS environment by default.
+# Carry the selected installation/route to the relay, never a parent session.
+RELAY_ENV_KEYS = (
+    'AGENT_TELEGRAM_HOME', 'AGENT_TELEGRAM_ACCESS',
+    'AGENT_TELEGRAM_MANAGED_BACKEND',
+    'AGENT_TELEGRAM_SOCKS_HOST', 'AGENT_TELEGRAM_SOCKS_PORT',
+    'TELEGRAM_TRANSCRIBE_OPENAI_URL', 'TELEGRAM_TRANSCRIBE_OPENAI_API_KEY',
+    'TELEGRAM_TRANSCRIBE_OPENAI_MODEL', 'TELEGRAM_TRANSCRIBE_OPENAI_MAX_MB',
+    'TELEGRAM_TRANSCRIBE_WHISPER_MODEL', 'TELEGRAM_TRANSCRIBE_WHISPER_DEVICE',
+    'TELEGRAM_TRANSCRIBE_WHISPER_COMPUTE_TYPE', 'TELEGRAM_TRANSCRIBE_WHISPER_MODEL_DIR',
+)
+
+
+def relay_parameters():
+    return StdioServerParameters(command=sys.executable,
+        args=[str(ROOT / 'server.py')], cwd=str(ROOT),
+        env={name: os.environ[name] for name in RELAY_ENV_KEYS if name in os.environ})
+
 
 def text_payload(result):
     texts = [c.text for c in result.content if c.type == "text"]
@@ -28,8 +46,7 @@ def text_payload(result):
 
 
 async def run(args):
-    parameters = StdioServerParameters(command=sys.executable,
-        args=[str(ROOT / "server.py")], cwd=str(ROOT))
+    parameters = relay_parameters()
     with open(os.devnull, "w") as stderr:
         async with stdio_client(parameters, errlog=stderr) as (reader, writer):
             async with ClientSession(reader, writer,

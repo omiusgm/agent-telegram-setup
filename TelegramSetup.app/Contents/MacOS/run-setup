@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+project_root=$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd)
+if [ -x "$project_root/.venv/bin/python" ]; then
+  setup_python="$project_root/.venv/bin/python"
+elif command -v python3 >/dev/null 2>&1; then
+  setup_python=$(command -v python3)
+else
+  /usr/bin/osascript -e 'display alert "Нужен Python" message "Попросите устанавливающего агента подготовить Python 3.11 или новее. Вход в Telegram затем пройдёт в браузере."'
+  exit 1
+fi
+"$setup_python" "$project_root/setup_web.py" --open >/dev/null 2>&1 &
