@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+<title>Runtime key: приватный ввод и проверка</title>
+<desc>Учебная иллюстрация. Условные данные. Не снимок личного аккаунта и не доказательство подключения.</desc>
+<style>text{font-family:Arial,"DejaVu Sans",sans-serif} .mono{font-family:Menlo,"DejaVu Sans Mono",monospace}</style>
+<rect x="0" y="0" width="1200" height="800" rx="0" fill="#eef3f7" stroke="none"/>
+<rect x="24" y="24" width="1152" height="752" rx="22" fill="#ffffff" stroke="none"/>
+<rect x="24" y="24" width="1152" height="110" rx="22" fill="#183047" stroke="none"/>
+<rect x="24" y="105" width="1152" height="29" rx="0" fill="#183047" stroke="none"/>
+<text x="52" y="56" font-size="14" fill="#b5d0e4" font-weight="700">АГЕНТ ЁЖ  /  TELEGRAM MCP → DOT</text>
+<text x="52" y="96" font-size="30" fill="#ffffff" font-weight="700">Runtime key: приватный ввод и проверка</text>
+<text x="52" y="165" font-size="19" fill="#5f7385" font-weight="400">Ключ control plane нужен tunnel-client. В чат и на иллюстрацию значение не попадает.</text>
+<rect x="1038" y="44" width="108" height="34" rx="17" fill="#34556f" stroke="none"/>
+<text x="1052" y="67" font-size="15" fill="#ffffff" font-weight="700">ШАГ 3</text>
+<line x1="52" y1="722" x2="1148" y2="722" stroke="#dce6ed" stroke-width="2"/>
+<text x="52" y="751" font-size="17" fill="#5f7385" font-weight="400">Учебная иллюстрация • условные данные • не снимок вашего аккаунта</text>
+<rect x="52" y="210" width="356" height="444" rx="14" fill="#f6f9fc" stroke="#dce7ef"/>
+<text x="76" y="249" font-size="25" fill="#213b51" font-weight="700">Права runtime</text>
+<rect x="76" y="280" width="132" height="34" rx="17" fill="#eaf4fc" stroke="none"/>
+<text x="90" y="303" font-size="15" fill="#167fc5" font-weight="700">TUNNELS</text>
+<text x="76" y="355" font-size="23" fill="#247d5e" font-weight="400">Read — требуется</text>
+<text x="76" y="400" font-size="23" fill="#247d5e" font-weight="400">Use — требуется</text>
+<text x="76" y="470" font-size="19" fill="#5f7385" font-weight="400">Manage — отдельная роль</text>
+<text x="76" y="501" font-size="19" fill="#5f7385" font-weight="400">для создания/изменения,</text>
+<text x="76" y="532" font-size="19" fill="#5f7385" font-weight="400">не обычного daemon.</text>
+<rect x="440" y="210" width="708" height="444" rx="14" fill="#f6f9fc" stroke="#dce7ef"/>
+<text x="464" y="249" font-size="25" fill="#213b51" font-weight="700">Общий setup: раздел runtime</text>
+<text x="464" y="282" font-size="17" fill="#5f7385" font-weight="400">Что подключаем</text>
+<rect x="464" y="295" width="300" height="52" rx="10" fill="#ffffff" stroke="#cddce7"/>
+<text x="480" y="329" font-size="21" fill="#213b51" font-weight="400">Telegram MCP</text>
+<text x="788" y="282" font-size="17" fill="#5f7385" font-weight="400">Tunnel ID</text>
+<rect x="788" y="295" width="336" height="52" rx="10" fill="#ffffff" stroke="#cddce7"/>
+<text x="804" y="329" font-size="21" fill="#213b51" font-weight="400">TUNNEL_ID</text>
+<text x="464" y="369" font-size="17" fill="#5f7385" font-weight="400">Runtime API key: приватный ввод владельцем</text>
+<rect x="464" y="382" width="660" height="52" rx="10" fill="#ffffff" stroke="#cddce7"/>
+<text x="480" y="416" font-size="21" fill="#213b51" font-weight="400">Значение здесь не изображается</text>
+<rect x="464" y="463" width="296" height="48" rx="10" fill="#167fc5" stroke="none"/>
+<text x="481" y="494" font-size="19" fill="#ffffff" font-weight="700">Проверить и сохранить</text>
+<rect x="464" y="535" width="660" height="84" rx="14" fill="#eaf7f0" stroke="none"/>
+<text x="482" y="564" font-size="18" fill="#247d5e" font-weight="400">Сохраняется на компьютере мастера.</text>
+<text x="482" y="592" font-size="18" fill="#247d5e" font-weight="400">Metadata read не доказывает Use и polling.</text>
+<text x="52" y="695" font-size="20" fill="#5f7385" font-weight="400">Для runtime на Linux ключ и file reference должны находиться на согласованном Linux-хосте.</text>
+</svg>

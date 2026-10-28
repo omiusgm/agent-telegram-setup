@@ -11,7 +11,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from mcp.types import CallToolResult, TextContent
 
-from telegram_setup.agents import ACTIONS, AccessDenied, AgentRegistry
+from telegram_setup.agents import READ_ACTIONS, AccessDenied, AgentRegistry
 from telegram_setup.gateway import BearerGate, UpstreamBridge, create_gateway
 from telegram_setup.reader_gateway import ReaderGateway
 
@@ -23,7 +23,7 @@ def row(token, chat_ids):
     return {'enabled': True, 'token_sha256': hashlib.sha256(token.encode()).hexdigest(),
             'expires_at': int(time.time()) + 3600, 'chat_ids': chat_ids,
             'contact_ids': [101], 'all_chats': False, 'all_contacts': False,
-            'include_phones': False, 'actions': sorted(ACTIONS)}
+            'include_phones': False, 'actions': sorted(READ_ACTIONS)}
 
 
 class FakeUpstream:

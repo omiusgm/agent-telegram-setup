@@ -4,11 +4,13 @@ import re
 import time
 
 from .agents import check_action
+from .scoped_search import ScopedSearchMixin, SearchCursors
 
 UPSTREAM_READS = {
     'status': {'get_me'}, 'dialogs': {'read_dialog_page', 'get_chat'},
     'contacts': {'list_contacts'}, 'history': {'read_history_page'},
-    'search': {'search_messages'}, 'messages': {'get_messages'},
+    'search': {'search_messages', 'read_search_page', 'read_account_search_page'}, 'messages': {'get_messages'},
+    'public-search': {'search_community_metadata'},
 }
 
 
@@ -28,10 +30,13 @@ def bounded_int(value, maximum=100):
     return value
 
 
-class ReaderGateway:
-    def __init__(self, registry, upstream):
+class ReaderGateway(ScopedSearchMixin):
+    def __init__(self, registry, upstream, *, search_cursor_dir=None):
+        from .config import private_dir
         self.registry, self.upstream = registry, upstream
         self.lock = asyncio.Lock()
+        self.search_lock = asyncio.Lock()
+        self.search_cursors = SearchCursors(search_cursor_dir or private_dir() / 'search-cursors')
         self.retry_at = 0.0
 
     def policy(self, agent, action, chat_id=None):
@@ -44,16 +49,34 @@ class ReaderGateway:
             raise PermissionError('upstream_tool_not_permitted')
         async with self.lock:
             # Re-read under the shared call lock: queued work must honour revocation.
-            self.policy(agent, action, chat_id)
+            profile = self.policy(agent, action, chat_id)
+            if name == 'read_account_search_page' and (not profile.get('all_chats', False)
+                    or args.get('agent_id') != agent):
+                raise PermissionError('account_search_requires_own_full_scope')
             remaining = self.retry_at - time.monotonic()
             if remaining > 0:
                 return {'error': 'telegram_cooldown', 'retry_after_seconds': int(remaining) + 1}
             result = await self.upstream.call(name, args)
             if isinstance(result, dict) and result.get('error'):
+                diagnostic = {}
+                if name == 'search_community_metadata':
+                    if result.get('leaf_error_category') in ('flood_wait','transport','telegram_rpc','backend_exception','capability_missing'):
+                        diagnostic['leaf_error_category'] = result['leaf_error_category']
+                    kind = result.get('leaf_error_type')
+                    if isinstance(kind,str) and re.fullmatch(r'[A-Za-z][A-Za-z0-9_]{0,79}',kind):
+                        diagnostic['leaf_error_type'] = kind
                 wait = result.get('retry_after_seconds', result.get('retry_after'))
                 if type(wait) in (int, float) and wait > 0:
                     self.retry_at = time.monotonic() + wait
-                    return {'error': 'telegram_cooldown', 'retry_after_seconds': int(wait) + 1}
+                    output = {'error': 'telegram_cooldown', 'retry_after_seconds': int(wait) + 1, **diagnostic}
+                    if name == 'read_account_search_page' and isinstance(result.get('next_cursor'), str) and re.fullmatch(r'[A-Za-z0-9_-]{32}', result['next_cursor']):
+                        output['next_cursor'] = result['next_cursor']
+                    return output
+                if name == 'search_community_metadata' and result.get('error') in ('public_search_failed','public_search_backend_unavailable','telegram_cooldown'):
+                    return {'error':result['error'],**diagnostic}
+                if name == 'read_account_search_page' and result.get('error') in (
+                        'account_search_page_failed', 'account_search_page_exceeds_byte_limit'):
+                    return {k: result[k] for k in ('error', 'next_cursor') if k in result}
                 return {'error': 'upstream_read_failed'}
             return result
 
@@ -61,9 +84,19 @@ class ReaderGateway:
         profile = self.policy(agent, 'status')
         result = await self.call(agent, 'status', 'get_me', {})
         connected = isinstance(result, dict) and result.get('type') == 'user' and not result.get('error')
-        return {'agent': agent, 'connected': connected, 'read_only': True,
-                'all_chats': profile.get('all_chats', False),
-                'allowed_chat_count': len(profile.get('chat_ids', []))}
+        output = {'agent': agent, 'connected': connected, 'read_only': True,
+                  'all_chats': profile.get('all_chats', False),
+                  'allowed_chat_count': len(profile.get('chat_ids', []))}
+        if not connected:
+            # Failed identity observation is not proof of revoked authorization.
+            # Only fixed diagnostic codes survive; never relay raw get_me data.
+            error = result.get('error') if isinstance(result, dict) else None
+            output['connection_error'] = (error if error in ('telegram_cooldown', 'upstream_read_failed')
+                                          else 'unexpected_status_payload')
+            wait = result.get('retry_after_seconds') if isinstance(result, dict) else None
+            if error == 'telegram_cooldown' and type(wait) is int and wait > 0:
+                output['retry_after_seconds'] = wait
+        return output
 
     async def dialogs(self, agent, cursor=None, limit=20, archived=False):
         profile = self.policy(agent, 'dialogs')

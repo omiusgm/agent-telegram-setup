@@ -28,9 +28,19 @@ def prepare():
     from .history_pages import register_history_page
     from .dialog_pages import register_dialog_page
     from .owned_inventory import register_owned_inventory
+    from .search_pages import register_search_pages
+    from .saved_files import register_saved_files
+    from .photos import register_photos
+    from .peer_profiles import register_peer_profiles
+    from .requested_sources import register_requested_source
     register_history_page(runtime)
     register_dialog_page(runtime)
     register_owned_inventory(runtime)
+    register_search_pages(runtime)
+    register_saved_files(runtime)
+    register_photos(runtime)
+    register_peer_profiles(runtime)
+    register_requested_source(runtime)
     enforce_transcription_engine(runner.mcp, settings)
     enforce_permission_snapshot(runner.mcp, settings)
     runner._telegram_setup_permissions = settings

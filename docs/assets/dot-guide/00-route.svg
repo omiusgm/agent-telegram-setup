@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+<title>Один Telegram-сервис, прямой доступ Dot</title>
+<desc>Учебная иллюстрация. Условные данные. Не снимок личного аккаунта и не доказательство подключения.</desc>
+<style>text{font-family:Arial,"DejaVu Sans",sans-serif} .mono{font-family:Menlo,"DejaVu Sans Mono",monospace}</style>
+<rect x="0" y="0" width="1200" height="800" rx="0" fill="#eef3f7" stroke="none"/>
+<rect x="24" y="24" width="1152" height="752" rx="22" fill="#ffffff" stroke="none"/>
+<rect x="24" y="24" width="1152" height="110" rx="22" fill="#183047" stroke="none"/>
+<rect x="24" y="105" width="1152" height="29" rx="0" fill="#183047" stroke="none"/>
+<text x="52" y="56" font-size="14" fill="#b5d0e4" font-weight="700">АГЕНТ ЁЖ  /  TELEGRAM MCP → DOT</text>
+<text x="52" y="96" font-size="30" fill="#ffffff" font-weight="700">Один Telegram-сервис, прямой доступ Dot</text>
+<text x="52" y="165" font-size="19" fill="#5f7385" font-weight="400">Серверная сессия остаётся у владельца. Каждый этап проверяется отдельно.</text>
+<rect x="1038" y="44" width="108" height="34" rx="17" fill="#34556f" stroke="none"/>
+<text x="1052" y="67" font-size="15" fill="#ffffff" font-weight="700">СХЕМА</text>
+<line x1="52" y1="722" x2="1148" y2="722" stroke="#dce6ed" stroke-width="2"/>
+<text x="52" y="751" font-size="17" fill="#5f7385" font-weight="400">Учебная иллюстрация • условные данные • не снимок вашего аккаунта</text>
+<rect x="52" y="226" width="174" height="136" rx="14" fill="#edf5fb" stroke="#c8deed"/>
+<text x="67" y="268" font-size="17" fill="#167fc5" font-weight="700">DOT</text>
+<text x="67" y="310" font-size="17" fill="#5f7385" font-weight="400">Личный агент</text>
+<line x1="234" y1="294" x2="262" y2="294" stroke="#167fc5" stroke-width="3"/>
+<polyline points="254,288 262,294 254,300" fill="none" stroke="#167fc5" stroke-width="3"/>
+<rect x="270" y="226" width="174" height="136" rx="14" fill="#edf5fb" stroke="#c8deed"/>
+<text x="285" y="268" font-size="17" fill="#167fc5" font-weight="700">ПЛАГИН</text>
+<text x="285" y="310" font-size="17" fill="#5f7385" font-weight="400">Установлен у вас</text>
+<line x1="452" y1="294" x2="480" y2="294" stroke="#167fc5" stroke-width="3"/>
+<polyline points="472,288 480,294 472,300" fill="none" stroke="#167fc5" stroke-width="3"/>
+<rect x="488" y="226" width="224" height="136" rx="14" fill="#edf5fb" stroke="#c8deed"/>
+<text x="503" y="268" font-size="17" fill="#167fc5" font-weight="700">ТУННЕЛЬ OPENAI</text>
+<text x="503" y="310" font-size="17" fill="#5f7385" font-weight="400">Защищённый маршрут</text>
+<line x1="720" y1="294" x2="748" y2="294" stroke="#167fc5" stroke-width="3"/>
+<polyline points="740,288 748,294 740,300" fill="none" stroke="#167fc5" stroke-width="3"/>
+<rect x="756" y="226" width="174" height="136" rx="14" fill="#edf5fb" stroke="#c8deed"/>
+<text x="771" y="268" font-size="17" fill="#167fc5" font-weight="700">MCP НА LINUX</text>
+<text x="771" y="310" font-size="17" fill="#5f7385" font-weight="400">Один backend</text>
+<line x1="938" y1="294" x2="966" y2="294" stroke="#167fc5" stroke-width="3"/>
+<polyline points="958,288 966,294 958,300" fill="none" stroke="#167fc5" stroke-width="3"/>
+<rect x="974" y="226" width="174" height="136" rx="14" fill="#edf5fb" stroke="#c8deed"/>
+<text x="989" y="268" font-size="17" fill="#167fc5" font-weight="700">TELEGRAM</text>
+<text x="989" y="310" font-size="17" fill="#5f7385" font-weight="400">Личный аккаунт</text>
+<text x="52" y="416" font-size="27" fill="#213b51" font-weight="700">Созданный туннель ещё не означает «Dot подключён»</text>
+<rect x="52" y="451" width="208" height="133" rx="14" fill="#f6f9fc" stroke="none"/>
+<rect x="66" y="465" width="43" height="34" rx="17" fill="#eaf4fc" stroke="none"/>
+<text x="80" y="488" font-size="15" fill="#167fc5" font-weight="700">1</text>
+<text x="66" y="532" font-size="22" fill="#213b51" font-weight="700">Telegram</text>
+<text x="66" y="560" font-size="15" fill="#5f7385" font-weight="400">Чтение проверено</text>
+<rect x="274" y="451" width="208" height="133" rx="14" fill="#f6f9fc" stroke="none"/>
+<rect x="288" y="465" width="43" height="34" rx="17" fill="#eaf4fc" stroke="none"/>
+<text x="302" y="488" font-size="15" fill="#167fc5" font-weight="700">2</text>
+<text x="288" y="532" font-size="22" fill="#213b51" font-weight="700">Туннель</text>
+<text x="288" y="560" font-size="15" fill="#5f7385" font-weight="400">Привязка верна</text>
+<rect x="496" y="451" width="208" height="133" rx="14" fill="#f6f9fc" stroke="none"/>
+<rect x="510" y="465" width="43" height="34" rx="17" fill="#eaf4fc" stroke="none"/>
+<text x="524" y="488" font-size="15" fill="#167fc5" font-weight="700">3</text>
+<text x="510" y="532" font-size="22" fill="#213b51" font-weight="700">Polling</text>
+<text x="510" y="560" font-size="15" fill="#5f7385" font-weight="400">Вход подтверждён</text>
+<rect x="718" y="451" width="208" height="133" rx="14" fill="#f6f9fc" stroke="none"/>
+<rect x="732" y="465" width="43" height="34" rx="17" fill="#eaf4fc" stroke="none"/>
+<text x="746" y="488" font-size="15" fill="#167fc5" font-weight="700">4</text>
+<text x="732" y="532" font-size="22" fill="#213b51" font-weight="700">Плагин</text>
+<text x="732" y="560" font-size="15" fill="#5f7385" font-weight="400">Установлен</text>
+<rect x="940" y="451" width="208" height="133" rx="14" fill="#f6f9fc" stroke="none"/>
+<rect x="954" y="465" width="43" height="34" rx="17" fill="#eaf4fc" stroke="none"/>
+<text x="968" y="488" font-size="15" fill="#167fc5" font-weight="700">5</text>
+<text x="954" y="532" font-size="22" fill="#213b51" font-weight="700">Вызов Dot</text>
+<text x="954" y="560" font-size="15" fill="#5f7385" font-weight="400">Получен ответ</text>
+<rect x="52" y="619" width="1096" height="56" rx="14" fill="#edf6fc" stroke="none"/>
+<text x="70" y="648" font-size="18" fill="#167fc5" font-weight="400">Отправка включается отдельным правом. Первый тест записи — только собственное «Избранное».</text>
+</svg>

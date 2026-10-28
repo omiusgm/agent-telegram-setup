@@ -9,4 +9,6 @@ __pycache__/
 .DS_Store
 dist/
 outputs/
+knowledge-data/
+source-catalogs/
 

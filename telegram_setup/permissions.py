@@ -23,6 +23,8 @@ CAPABILITIES = {
                   ("send_message", "reply_to_message")),
     "send-files": ("Загрузка и отправка файлов", "Документы, картинки, альбомы, аудио, видео, стикеры и GIF.",
                    ("send_file", "send_album", "send_voice", "upload_file", "send_sticker", "send_gif")),
+    "saved-files": ("Scoped-файлы в Избранном", "Только временные файлы с ACL агента и проверкой скачиванием обратно.",
+                    ("send_staged_saved_file", "download_saved_attachment")),
     "forward": ("Пересылка сообщений", "Пересылать выбранные сообщения в согласованный чат.",
                 ("forward_message", "forward_messages")),
     "edit": ("Редактирование сообщений и черновиков", "Менять доступные аккаунту сообщения, сохранять и очищать черновики.",
@@ -33,6 +35,14 @@ CAPABILITIES = {
                  ("mark_as_read", "archive_chat", "unarchive_chat", "mute_chat", "unmute_chat",
                   "pin_message", "unpin_message", "unpin_all_messages", "update_folder", "create_folder",
                   "add_chat_to_folder", "remove_chat_from_folder", "delete_folder", "reorder_folders")),
+    "read-photo": ("Выбранные фото для удалённых агентов", "Только точные chat_id/message_id, отдельно разрешённые каждому агенту.",
+                   ("download_scoped_photo",)),
+    "agent-profiles": ("Карточки и аватарки для удалённых агентов", "Чтение профилей и доступных аватарок в разрешённой области агента, без изменения профиля.",
+                       ("read_agent_peer_profile", "list_agent_avatars", "download_agent_avatar")),
+    "agent-attachments": ("Вложения для удалённых агентов", "Байты выбранного сообщения в разрешённом чате: документы и фото, без отправок.",
+                          ("download_agent_attachment",)),
+    "requested-source-join": ("Вступление в источники по запросу владельца", "Только ссылка, полученная из подтверждённого сообщения владельца агенту; без отправки сообщений.",
+                              ("join_owner_requested_source",)),
 }
 ENGINES = {
     "telegram": "Telegram: распознавание средствами Telegram; доступность и лимиты зависят от аккаунта.",
@@ -95,7 +105,11 @@ def exposed_tools(data):
     enabled = set(validate_settings(data)["enabled"])
     extras = {tool for name in enabled for tool in CAPABILITIES[name][2]}
     optional_reads = {"media": CAPABILITIES["media"][2], "transcribe": ("transcribe_voice",),
-                      "download": ("preview_custom_emoji",)}
+                      "download": ("preview_custom_emoji",),
+                      "saved-files": ("download_saved_attachment",),
+                      "read-photo": ("download_scoped_photo",),
+                      "agent-profiles": CAPABILITIES["agent-profiles"][2],
+                      "agent-attachments": CAPABILITIES["agent-attachments"][2]}
     excluded = {tool for name, tools in optional_reads.items() if name not in enabled for tool in tools}
     return "read-only" + ("+" + ",".join(sorted(extras)) if extras else "") + ("-" + ",".join(sorted(excluded)) if excluded else "")
 

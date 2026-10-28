@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+<title>Проверка именно из вашего Dot</title>
+<desc>Учебная иллюстрация. Условные данные. Не снимок личного аккаунта и не доказательство подключения.</desc>
+<style>text{font-family:Arial,"DejaVu Sans",sans-serif} .mono{font-family:Menlo,"DejaVu Sans Mono",monospace}</style>
+<rect x="0" y="0" width="1200" height="800" rx="0" fill="#eef3f7" stroke="none"/>
+<rect x="24" y="24" width="1152" height="752" rx="22" fill="#ffffff" stroke="none"/>
+<rect x="24" y="24" width="1152" height="110" rx="22" fill="#183047" stroke="none"/>
+<rect x="24" y="105" width="1152" height="29" rx="0" fill="#183047" stroke="none"/>
+<text x="52" y="56" font-size="14" fill="#b5d0e4" font-weight="700">АГЕНТ ЁЖ  /  TELEGRAM MCP → DOT</text>
+<text x="52" y="96" font-size="30" fill="#ffffff" font-weight="700">Проверка именно из вашего Dot</text>
+<text x="52" y="165" font-size="19" fill="#5f7385" font-weight="400">Учебный пример ответа. На вашей установке нужен собственный реальный вызов.</text>
+<rect x="1038" y="44" width="108" height="34" rx="17" fill="#34556f" stroke="none"/>
+<text x="1052" y="67" font-size="15" fill="#ffffff" font-weight="700">ШАГ 6</text>
+<line x1="52" y1="722" x2="1148" y2="722" stroke="#dce6ed" stroke-width="2"/>
+<text x="52" y="751" font-size="17" fill="#5f7385" font-weight="400">Учебная иллюстрация • условные данные • не снимок вашего аккаунта</text>
+<rect x="52" y="204" width="1096" height="95" rx="14" fill="#edf5fb" stroke="none"/>
+<text x="76" y="241" font-size="23" fill="#213b51" font-weight="400">Используй плагин «Мой Telegram». Вызови telegram_status,</text>
+<text x="76" y="272" font-size="23" fill="#213b51" font-weight="400">затем покажи до трёх разрешённых диалогов.</text>
+<rect x="52" y="329" width="524" height="323" rx="14" fill="#f6f9fc" stroke="#dce7ef"/>
+<text x="76" y="372" font-size="26" fill="#213b51" font-weight="700">Вызов MCP из Dot</text>
+<text x="76" y="422" font-size="23" fill="#167fc5" font-weight="400" class="mono">telegram_status</text>
+<text x="76" y="465" font-size="22" fill="#247d5e" font-weight="400" class="mono">connected: true</text>
+<text x="76" y="505" font-size="22" fill="#247d5e" font-weight="400" class="mono">read_only: true</text>
+<text x="76" y="569" font-size="19" fill="#5f7385" font-weight="400">Это пример полей,</text>
+<text x="76" y="600" font-size="19" fill="#5f7385" font-weight="400">а не сохранённый результат.</text>
+<rect x="604" y="329" width="544" height="323" rx="14" fill="#ecf8f1" stroke="#cae7d7"/>
+<text x="628" y="372" font-size="26" fill="#213b51" font-weight="700">Один выбранный чат</text>
+<text x="628" y="423" font-size="21" fill="#213b51" font-weight="400">Владелец выбирает разрешённый диалог.</text>
+<text x="628" y="472" font-size="21" fill="#213b51" font-weight="400">read_history_page: limit = 1</text>
+<text x="628" y="521" font-size="21" fill="#213b51" font-weight="400">Dot получает одно сообщение.</text>
+<rect x="628" y="584" width="345" height="34" rx="17" fill="#d1ebdc" stroke="none"/>
+<text x="642" y="607" font-size="15" fill="#247d5e" font-weight="700">ПРИМЕР: READ ПОДТВЕРЖДЁН</text>
+<text x="52" y="695" font-size="20" fill="#5f7385" font-weight="400">Локальный SDK и чтение через Codex за Dot этот этап не заменяют.</text>
+</svg>

@@ -1,4 +1,4 @@
-"""Owner-managed, revocable reader identities; never print a bearer token."""
+"""Revocable agent identities; reads by default, explicit Saved Messages text."""
 import argparse
 import hashlib
 import hmac
@@ -11,7 +11,11 @@ import tempfile
 import time
 from pathlib import Path
 
-ACTIONS = frozenset({'status', 'dialogs', 'contacts', 'history', 'search', 'messages'})
+READ_ACTIONS = frozenset({'status', 'dialogs', 'contacts', 'history', 'search', 'messages'})
+SAVED_TEXT_ACTION = 'send-saved-text'
+OPTIONAL_ACTIONS = frozenset({'public-search', 'send-saved-file', 'download-saved-file', 'read-photo',
+                              'read-profiles', 'read-avatars', 'read-attachments'})
+ACTIONS = READ_ACTIONS | {SAVED_TEXT_ACTION} | OPTIONAL_ACTIONS
 
 
 class AccessDenied(PermissionError):
@@ -53,6 +57,12 @@ class AgentRegistry:
                         or (key == 'contact_ids' and any(x < 0 for x in ids))):
                     raise AccessDenied('agent_registry_invalid')
             actions = row.get('actions', [])
+            sources = row.get('photo_sources', [])
+            if (not isinstance(sources, list) or len(sources) > 200 or any(
+                    not isinstance(s, dict) or set(s) != {'chat_id', 'message_id'}
+                    or type(s['chat_id']) is not int or s['chat_id'] == 0
+                    or type(s['message_id']) is not int or s['message_id'] <= 0 for s in sources)):
+                raise AccessDenied('agent_photo_sources_invalid')
             if not isinstance(actions, list) or not all(isinstance(x, str) for x in actions) or not set(actions) <= ACTIONS:
                 raise AccessDenied('agent_registry_invalid')
             expiry = row.get('expires_at')
@@ -107,6 +117,14 @@ def check_action(profile, action, chat_id=None):
             raise AccessDenied('chat_not_permitted')
 
 
+def check_photo(profile, chat_id, message_id):
+    check_action(profile, 'read-photo', chat_id)
+    if type(message_id) is not int or message_id <= 0:
+        raise AccessDenied('positive_message_id_required')
+    if {'chat_id': chat_id, 'message_id': message_id} not in profile.get('photo_sources', []):
+        raise AccessDenied('photo_source_not_permitted')
+
+
 def main():
     from .config import prepare_private
     parser = argparse.ArgumentParser(description=__doc__)
@@ -119,15 +137,57 @@ def main():
     add.add_argument('--include-phones', action='store_true')
     add.add_argument('--expires-days', type=int, default=30)
     add.add_argument('--token-file', required=True)
+    add.add_argument('--send-saved-text', action='store_true',
+                     help='Explicitly allow plain text only to this account\'s Saved Messages')
+    for name in sorted(OPTIONAL_ACTIONS):
+        if name == 'read-photo':
+            continue  # Exact sources must be granted separately, never account-wide.
+        add.add_argument('--' + name, action='store_true', help='Explicit optional agent capability')
+    photo = sub.add_parser('grant-read-photo')
+    photo.add_argument('agent'); photo.add_argument('--chat-id', type=int, required=True)
+    photo.add_argument('--message-id', type=int, required=True)
+    sub.add_parser('revoke-read-photo').add_argument('agent')
     revoke = sub.add_parser('revoke'); revoke.add_argument('agent')
+    for name in ('grant-saved-text', 'revoke-saved-text'):
+        sub.add_parser(name).add_argument('agent')
+    scopes = {'public-search': 'public-search', 'saved-upload': 'send-saved-file',
+              'saved-download': 'download-saved-file', 'profiles': 'read-profiles', 'avatars': 'read-avatars',
+              'attachments': 'read-attachments'}
+    for scope in scopes:
+        for operation in ('grant', 'revoke'):
+            sub.add_parser(operation + '-' + scope).add_argument('agent')
     sub.add_parser('show')
     args = parser.parse_args()
     registry = AgentRegistry(args.registry or prepare_private() / 'agents.json')
     data = registry.load() if registry.path.exists() else {'schema_version': 1, 'agents': {}}
+    if args.action in ('grant-read-photo', 'revoke-read-photo'):
+        if args.agent not in data['agents']:
+            parser.error('Unknown agent')
+        row = data['agents'][args.agent]
+        actions = set(row.get('actions', []))
+        if args.action == 'grant-read-photo':
+            if args.chat_id == 0 or args.message_id <= 0:
+                parser.error('Numeric chat and positive message IDs required')
+            check_action(dict(row, actions=list(actions | {'read-photo'})), 'read-photo', args.chat_id)
+            source = {'chat_id': args.chat_id, 'message_id': args.message_id}
+            sources = list(row.get('photo_sources', []))
+            if source not in sources:
+                sources.append(source)
+            if len(sources) > 200:
+                parser.error('At most 200 exact photo sources')
+            row['photo_sources'] = sources; actions.add('read-photo')
+        else:
+            row.pop('photo_sources', None); actions.discard('read-photo')
+        row['actions'] = sorted(actions)
+        registry.save(data)
+        print('Exact photo permission updated; no Telegram read or send performed.')
+        return
     if args.action == 'show':
         print(json.dumps({name: {'enabled': row['enabled'], 'expires_at': row.get('expires_at'),
             'all_chats': row.get('all_chats', False), 'chat_count': len(row.get('chat_ids', [])),
-            'all_contacts': row.get('all_contacts', False), 'contact_count': len(row.get('contact_ids', []))}
+            'all_contacts': row.get('all_contacts', False), 'contact_count': len(row.get('contact_ids', [])),
+            'send_saved_text': SAVED_TEXT_ACTION in row.get('actions', []),
+            'optional_actions': sorted(set(row.get('actions', [])) & OPTIONAL_ACTIONS)}
             for name, row in data['agents'].items()}))
         return
     if args.action == 'revoke':
@@ -137,6 +197,31 @@ def main():
         registry.save(data)
         print('Agent revoked; subsequent requests are denied.')
         return
+    if args.action in ('grant-saved-text', 'revoke-saved-text'):
+        if args.agent not in data['agents']:
+            parser.error('Unknown agent')
+        actions = set(data['agents'][args.agent]['actions'])
+        if args.action == 'grant-saved-text':
+            actions.add(SAVED_TEXT_ACTION)
+        else:
+            actions.discard(SAVED_TEXT_ACTION)
+        data['agents'][args.agent]['actions'] = sorted(actions)
+        registry.save(data)
+        print('Saved Messages text permission updated; no Telegram message was sent.')
+        return
+    for scope, permission in scopes.items():
+        if args.action in ('grant-' + scope, 'revoke-' + scope):
+            if args.agent not in data['agents']:
+                parser.error('Unknown agent')
+            actions = set(data['agents'][args.agent]['actions'])
+            if args.action.startswith('grant-'):
+                actions.add(permission)
+            else:
+                actions.discard(permission)
+            data['agents'][args.agent]['actions'] = sorted(actions)
+            registry.save(data)
+            print('Optional permission updated; no Telegram message or file was sent.')
+            return
     if not re.fullmatch(r'[a-zA-Z0-9_-]{1,64}', args.agent) or not 1 <= args.expires_days <= 365:
         parser.error('Invalid agent or lifetime')
     if args.agent in data['agents']:
@@ -154,13 +239,15 @@ def main():
             'expires_at': int(time.time()) + args.expires_days * 86400,
             'all_chats': args.all_chats, 'chat_ids': sorted(set(args.chat_id)),
             'all_contacts': args.all_contacts, 'contact_ids': sorted(set(args.contact_id)),
-            'include_phones': args.include_phones, 'actions': sorted(ACTIONS)}
+            'include_phones': args.include_phones,
+            'actions': sorted(READ_ACTIONS | ({SAVED_TEXT_ACTION} if args.send_saved_text else set()) |
+                              {name for name in OPTIONAL_ACTIONS if getattr(args, name.replace('-', '_'), False)})}
         registry.save(data)
     except BaseException:
         token_path.unlink(missing_ok=True)
         raise
     print(json.dumps({'agent': args.agent, 'token_file': str(token_path),
-                      'raw_token_printed': False, 'read_only': True}))
+                      'raw_token_printed': False, 'read_only': not (args.send_saved_text or args.send_saved_file)}))
 
 
 if __name__ == '__main__':

@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+<title>Platform: только своё личное окружение</title>
+<desc>Учебная иллюстрация. Условные данные. Не снимок личного аккаунта и не доказательство подключения.</desc>
+<style>text{font-family:Arial,"DejaVu Sans",sans-serif} .mono{font-family:Menlo,"DejaVu Sans Mono",monospace}</style>
+<rect x="0" y="0" width="1200" height="800" rx="0" fill="#eef3f7" stroke="none"/>
+<rect x="24" y="24" width="1152" height="752" rx="22" fill="#ffffff" stroke="none"/>
+<rect x="24" y="24" width="1152" height="110" rx="22" fill="#183047" stroke="none"/>
+<rect x="24" y="105" width="1152" height="29" rx="0" fill="#183047" stroke="none"/>
+<text x="52" y="56" font-size="14" fill="#b5d0e4" font-weight="700">АГЕНТ ЁЖ  /  TELEGRAM MCP → DOT</text>
+<text x="52" y="96" font-size="30" fill="#ffffff" font-weight="700">Platform: только своё личное окружение</text>
+<text x="52" y="165" font-size="19" fill="#5f7385" font-weight="400">Organization — окружение API. Workspace — среда ChatGPT, где работает ваш Dot.</text>
+<rect x="1038" y="44" width="108" height="34" rx="17" fill="#34556f" stroke="none"/>
+<text x="1052" y="67" font-size="15" fill="#ffffff" font-weight="700">ШАГ 2</text>
+<line x1="52" y1="722" x2="1148" y2="722" stroke="#dce6ed" stroke-width="2"/>
+<text x="52" y="751" font-size="17" fill="#5f7385" font-weight="400">Учебная иллюстрация • условные данные • не снимок вашего аккаунта</text>
+<rect x="52" y="197" width="758" height="495" rx="14" fill="#f7fafc" stroke="#dce7ef"/>
+<text x="76" y="232" font-size="24" fill="#213b51" font-weight="700">Create tunnel</text>
+<text x="76" y="267" font-size="17" fill="#5f7385" font-weight="400">Name</text>
+<rect x="76" y="280" width="710" height="52" rx="10" fill="#ffffff" stroke="#cddce7"/>
+<text x="92" y="314" font-size="21" fill="#213b51" font-weight="400">Мой Telegram</text>
+<text x="76" y="351" font-size="17" fill="#5f7385" font-weight="400">Description</text>
+<rect x="76" y="364" width="710" height="52" rx="10" fill="#ffffff" stroke="#cddce7"/>
+<text x="92" y="398" font-size="21" fill="#213b51" font-weight="400">Личный MCP, согласованные права</text>
+<text x="76" y="435" font-size="17" fill="#5f7385" font-weight="400">Organizations</text>
+<rect x="76" y="448" width="710" height="52" rx="10" fill="#ffffff" stroke="#cddce7"/>
+<text x="92" y="482" font-size="21" fill="#213b51" font-weight="400">Personal Organization — ваш личный вход</text>
+<text x="76" y="519" font-size="17" fill="#5f7385" font-weight="400">ChatGPT workspaces</text>
+<rect x="76" y="532" width="710" height="52" rx="10" fill="#ffffff" stroke="#cddce7"/>
+<text x="92" y="566" font-size="21" fill="#213b51" font-weight="400">Личный workspace — соответствие проверено</text>
+<rect x="566" y="618" width="220" height="48" rx="10" fill="#167fc5" stroke="none"/>
+<text x="583" y="649" font-size="19" fill="#ffffff" font-weight="700">Create</text>
+<rect x="836" y="226" width="312" height="196" rx="14" fill="#edf6fc" stroke="none"/>
+<text x="854" y="255" font-size="18" fill="#167fc5" font-weight="400">Старые и чужие команды</text>
+<text x="854" y="283" font-size="18" fill="#167fc5" font-weight="400">не выбирают наугад.</text>
+<text x="854" y="311" font-size="18" fill="#167fc5" font-weight="400"></text>
+<text x="854" y="339" font-size="18" fill="#167fc5" font-weight="400">Если виден только ID,</text>
+<text x="854" y="367" font-size="18" fill="#167fc5" font-weight="400">агент проверяет вход</text>
+<text x="854" y="395" font-size="18" fill="#167fc5" font-weight="400">и соответствие среды.</text>
+<rect x="836" y="470" width="312" height="168" rx="14" fill="#fff6df" stroke="none"/>
+<text x="854" y="499" font-size="18" fill="#8a650b" font-weight="400">После создания:</text>
+<text x="854" y="527" font-size="18" fill="#8a650b" font-weight="400">TUNNEL_ID</text>
+<text x="854" y="555" font-size="18" fill="#8a650b" font-weight="400"></text>
+<text x="854" y="583" font-size="18" fill="#8a650b" font-weight="400">Имя и описание</text>
+<text x="854" y="611" font-size="18" fill="#8a650b" font-weight="400">не выдают права MCP.</text>
+</svg>

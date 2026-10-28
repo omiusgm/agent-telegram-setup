@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "language": "ru",
+  "canvas": {
+    "width": 1200,
+    "height": 800
+  },
+  "label": "Учебные иллюстрации с условными данными, не скриншоты аккаунта",
+  "steps": [
+    {
+      "id": "00-route",
+      "blocked_state": "overview",
+      "title": "Общий маршрут",
+      "guide": "dot-client-guide.md",
+      "image": "assets/dot-guide/00-route.png",
+      "editable_source": "assets/dot-guide/00-route.svg",
+      "kind": "teaching_illustration",
+      "uses_real_account_data": false,
+      "required_evidence": "Независимые этапы; не результат подключения"
+    },
+    {
+      "id": "01-telegram",
+      "blocked_state": "telegram_auth_or_scope",
+      "title": "Telegram и права",
+      "guide": "dot-client-guide.md#step-1",
+      "image": "assets/dot-guide/01-telegram.png",
+      "editable_source": "assets/dot-guide/01-telegram.svg",
+      "kind": "teaching_illustration",
+      "uses_real_account_data": false,
+      "required_evidence": "Настоящее ограниченное чтение MCP"
+    },
+    {
+      "id": "02-tunnel",
+      "blocked_state": "tunnel_or_workspace_missing",
+      "title": "Личный туннель",
+      "guide": "dot-client-guide.md#step-2",
+      "image": "assets/dot-guide/02-tunnel.png",
+      "editable_source": "assets/dot-guide/02-tunnel.svg",
+      "kind": "teaching_illustration",
+      "uses_real_account_data": false,
+      "required_evidence": "Объект и соответствие личной среде"
+    },
+    {
+      "id": "03-runtime-key",
+      "blocked_state": "runtime_credential_needed",
+      "title": "Приватный runtime key",
+      "guide": "dot-client-guide.md#step-3",
+      "image": "assets/dot-guide/03-runtime-key.png",
+      "editable_source": "assets/dot-guide/03-runtime-key.svg",
+      "kind": "teaching_illustration",
+      "uses_real_account_data": false,
+      "required_evidence": "Формат и опциональный metadata Read; Use и polling проверяются отдельно"
+    },
+    {
+      "id": "04-polling",
+      "blocked_state": "polling_not_authenticated",
+      "title": "Authenticated polling",
+      "guide": "dot-client-guide.md#step-4",
+      "image": "assets/dot-guide/04-polling.png",
+      "editable_source": "assets/dot-guide/04-polling.svg",
+      "kind": "teaching_illustration",
+      "uses_real_account_data": false,
+      "required_evidence": "Успешный свежий авторизованный poll и upstream"
+    },
+    {
+      "id": "05-plugin",
+      "blocked_state": "plugin_not_installed",
+      "title": "Личный плагин",
+      "guide": "dot-client-guide.md#step-5",
+      "image": "assets/dot-guide/05-plugin.png",
+      "editable_source": "assets/dot-guide/05-plugin.svg",
+      "kind": "teaching_illustration",
+      "uses_real_account_data": false,
+      "required_evidence": "Карточка создана и плагин установлен"
+    },
+    {
+      "id": "06-dot-read",
+      "blocked_state": "dot_read_not_verified",
+      "title": "Реальный вызов Dot",
+      "guide": "dot-client-guide.md#step-6",
+      "image": "assets/dot-guide/06-dot-read.png",
+      "editable_source": "assets/dot-guide/06-dot-read.svg",
+      "kind": "teaching_illustration",
+      "uses_real_account_data": false,
+      "required_evidence": "Реальный MCP read самого Dot"
+    },
+    {
+      "id": "07-saved-text",
+      "blocked_state": "optional_saved_write",
+      "title": "Один тест в Избранное",
+      "guide": "dot-client-guide.md#step-7",
+      "image": "assets/dot-guide/07-saved-text.png",
+      "editable_source": "assets/dot-guide/07-saved-text.svg",
+      "kind": "teaching_illustration",
+      "uses_real_account_data": false,
+      "required_evidence": "Owner-approved отправка с readback"
+    }
+  ]
+}
