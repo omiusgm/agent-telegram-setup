@@ -79,8 +79,11 @@ async def upstream_connection():
 def validate_backend_catalog(catalog):
     # A shared backend may also serve the explicit text MVP. Readers still
     # expose six read tools; they never gain arbitrary upstream forwarding.
-    optional_text = {'send_message', 'reply_to_message', 'send_staged_saved_file'}
-    if any(not t.annotations or (not t.annotations.readOnlyHint and t.name not in optional_text)
+    # The owner-requested join tool stays on the local backend. Its presence
+    # does not register or grant a join tool on the remote reader facade.
+    known_local_writes = {'send_message', 'reply_to_message', 'send_staged_saved_file',
+                          'join_owner_requested_source'}
+    if any(not t.annotations or (not t.annotations.readOnlyHint and t.name not in known_local_writes)
            for t in catalog):
         raise RuntimeError('backend_exposes_unsupported_writes')
 

@@ -122,7 +122,8 @@ class GatewayTests(RegistryFixture, unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.upstream.calls, [])
 
     async def test_no_arbitrary_forwarding_or_write(self):
-        for name in ('send_message', 'send_file', 'edit_message', 'delete_message', 'mark_as_read'):
+        for name in ('send_message', 'send_file', 'edit_message', 'delete_message', 'mark_as_read',
+                     'join_owner_requested_source'):
             with self.assertRaises(PermissionError):
                 await self.api.call('a', 'history', name, {'chat_id': 11}, 11)
         self.assertEqual(self.upstream.calls, [])
