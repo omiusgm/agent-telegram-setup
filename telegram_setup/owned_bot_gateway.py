@@ -1,4 +1,4 @@
-"""Explicit opt-in facade for owned-bot metadata and exact profile edits."""
+"""Explicit opt-in facade for owned-bot metadata and owner-verified profile edits."""
 import time
 
 from mcp.server.fastmcp.exceptions import ToolError
@@ -92,8 +92,9 @@ def register_owned_bot_gateway(mcp, service):
     @mcp.tool(annotations=write)
     async def update_owned_bot_profile(ctx: Context, bot_id: StrictInt, request_id: str,
                  name: str | None = None, about: str | None = None, description: str | None = None) -> dict:
-        """Change fields of one separately granted owned bot; verify readback.
+        """Change an exact-granted bot or any currently owned bot under all-owned scope.
 
+        Telegram ownership is checked before mutation even with all-owned scope.
         A unique request_id is mandatory. Never retry uncertain_do_not_retry
         with another ID. Does not create bots, fetch tokens, or change settings.
         """

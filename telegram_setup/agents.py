@@ -50,7 +50,8 @@ class AgentRegistry:
                 raise AccessDenied('agent_registry_invalid')
             if row['enabled'] and digest is None:
                 raise AccessDenied('agent_registry_invalid')
-            for key in ('all_chats', 'all_contacts', 'include_phones', 'poll_write_saved', 'poll_write_all_chats'):
+            for key in ('all_chats', 'all_contacts', 'include_phones', 'poll_write_saved', 'poll_write_all_chats',
+                        'bot_profile_all_owned'):
                 if type(row.get(key, False)) is not bool:
                     raise AccessDenied('agent_registry_invalid')
             if row.get('bot_create_mode', 'operator') not in ('operator', 'delegated'):
@@ -157,11 +158,16 @@ def check_poll_target(profile, action, chat_id, owner_id, *, write):
 
 
 def check_owned_bot(profile, action, bot_id=None, *, write=False):
-    """Bot-profile writes require an exact ID grant in addition to the action."""
+    """Bot-profile writes need an exact ID or a separately granted all-owned scope.
+
+    This policy grants only a potential target. The backend must still ask
+    Telegram whether the current account owns the bot before any mutation.
+    """
     check_action(profile, action)
     if bot_id is not None and (type(bot_id) is not int or bot_id <= 0):
         raise AccessDenied('numeric_bot_id_required')
-    if write and (bot_id is None or bot_id not in profile.get('bot_profile_write_ids', [])):
+    if write and (bot_id is None or (profile.get('bot_profile_all_owned') is not True
+                                     and bot_id not in profile.get('bot_profile_write_ids', []))):
         raise AccessDenied('bot_profile_target_not_permitted')
 
 
@@ -199,6 +205,7 @@ def main():
     for operation in ('grant', 'revoke'):
         target = sub.add_parser(operation + '-bot-profile')
         target.add_argument('agent'); target.add_argument('--bot-id', type=int, required=True)
+        sub.add_parser(operation + '-bot-profile-all').add_argument('agent')
         sub.add_parser(operation + '-bot-delegated').add_argument('agent')
         target = sub.add_parser(operation + '-bot-notify')
         target.add_argument('agent'); target.add_argument('--bot-id', type=int, required=True)
@@ -222,6 +229,17 @@ def main():
     args = parser.parse_args()
     registry = AgentRegistry(args.registry or prepare_private() / 'agents.json')
     data = registry.load() if registry.path.exists() else {'schema_version': 1, 'agents': {}}
+    if args.action in ('grant-bot-profile-all', 'revoke-bot-profile-all'):
+        if args.agent not in data['agents']: parser.error('Unknown agent')
+        row = data['agents'][args.agent]; actions = set(row.get('actions', []))
+        if args.action.startswith('grant-'):
+            row['bot_profile_all_owned'] = True; actions.add('edit-owned-bot-profile')
+        else:
+            row.pop('bot_profile_all_owned', None)
+            if not row.get('bot_profile_write_ids'): actions.discard('edit-owned-bot-profile')
+        row['actions'] = sorted(actions); registry.save(data)
+        print('All-owned bot profile scope updated; exact-ID grants are unchanged. Nothing was sent.')
+        return
     if args.action in ('grant-bot-delegated', 'revoke-bot-delegated'):
         if args.agent not in data['agents']: parser.error('Unknown agent')
         row = data['agents'][args.agent]
@@ -258,11 +276,14 @@ def main():
         else: ids.discard(args.bot_id)
         if len(ids) > 200: parser.error('At most 200 exact bot targets')
         actions = set(row.get('actions', []))
-        if ids: actions.add('edit-owned-bot-profile')
+        if ids or row.get('bot_profile_all_owned') is True: actions.add('edit-owned-bot-profile')
         else: actions.discard('edit-owned-bot-profile')
         row['bot_profile_write_ids'] = sorted(ids); row['actions'] = sorted(actions)
         registry.save(data)
-        print('Exact bot profile permission updated; no Telegram operation was performed.')
+        if args.action.startswith('revoke-') and row.get('bot_profile_all_owned') is True:
+            print('Exact ID grant removed; all-owned bot profile access remains active. Nothing was sent.')
+        else:
+            print('Exact bot profile permission updated; no Telegram operation was performed.')
         return
     if args.action in ('grant-poll-saved', 'revoke-poll-saved', 'grant-poll-chat', 'revoke-poll-chat',
                        'grant-poll-all-chats', 'revoke-poll-all-chats'):
@@ -316,6 +337,7 @@ def main():
             'poll_write_chat_count': len(row.get('poll_write_chat_ids', [])),
             'bot_create_mode': row.get('bot_create_mode', 'operator'),
             'bot_profile_write_count': len(row.get('bot_profile_write_ids', [])),
+            'bot_profile_all_owned': row.get('bot_profile_all_owned', False),
             'bot_notification_target_count': len(row.get('bot_notify_ids', [])),
             'optional_actions': sorted(set(row.get('actions', [])) & OPTIONAL_ACTIONS)}
             for name, row in data['agents'].items()}))
@@ -325,6 +347,7 @@ def main():
             parser.error('Unknown agent')
         data['agents'][args.agent]['enabled'] = False
         data['agents'][args.agent].pop('bot_create_mode', None)
+        data['agents'][args.agent].pop('bot_profile_all_owned', None)
         registry.save(data)
         print('Agent revoked; subsequent requests are denied.')
         return

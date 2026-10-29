@@ -297,9 +297,11 @@ def create_gateway(registry, fixed_agent=None, upstream_factory=upstream_connect
             result.update(owned_bot_read_allowed='read-owned-bots' in actions,
                 owned_bot_edit_allowed='edit-owned-bot-profile' in actions,
                 owned_bot_edit_target_count=len(profile.get('bot_profile_write_ids', [])),
+                owned_bot_edit_all_owned=profile.get('bot_profile_all_owned', False),
                 owned_bot_read_backend_ready={'agent_list_owned_bots', 'agent_get_owned_bot_profile'} <= available,
                 owned_bot_edit_backend_ready='agent_update_owned_bot_profile' in available)
-            if ('edit-owned-bot-profile' in actions and profile.get('bot_profile_write_ids')
+            if ('edit-owned-bot-profile' in actions
+                    and (profile.get('bot_profile_write_ids') or profile.get('bot_profile_all_owned') is True)
                     and 'agent_update_owned_bot_profile' in available):
                 result['read_only'] = False
         if enable_newbot:

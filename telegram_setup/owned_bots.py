@@ -97,8 +97,8 @@ class OwnedBots:
             receipt = {'request_id': request_id, 'bot_id': bot_id, 'operation': 'bot-profile',
                        'status': 'uncertain_do_not_retry', 'readback_verified': False}
             try:
-                # Authorization and ownership are rechecked after durable claim
-                # and before the one Telegram mutation.
+                # Authorization is rechecked after the durable claim. Telegram
+                # itself enforces bot ownership again for the mutation.
                 self.policy(agent, 'edit-owned-bot-profile', bot_id, write=True)
                 accepted = await self.client(functions.bots.SetBotInfoRequest(
                     bot=peer, lang_code='', **value), flood_sleep_threshold=0)
