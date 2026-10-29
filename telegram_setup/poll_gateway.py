@@ -5,6 +5,7 @@ import time
 from .agents import AccessDenied, check_poll_target
 from .poll_common import fingerprint, numeric_chat, positive_message, valid_request_id, validate_poll
 from .poll_receipts import PollReceipts
+from .sensitive_peer import deny_sensitive_peer, is_sensitive_peer
 
 
 class PollGateway:
@@ -32,6 +33,7 @@ class PollGateway:
         return owner['id']
 
     def _policy(self, agent, action, chat_id, owner_id, *, write):
+        deny_sensitive_peer(chat_id)
         check_poll_target(self.api.registry.profile(agent), action, chat_id, owner_id, write=write)
 
     def _wait(self):
@@ -55,7 +57,7 @@ class PollGateway:
             saved_allowed = profile.get('poll_write_saved', False) or profile.get('poll_write_all_chats', False)
             return {'saved_chat_id': owner if saved_allowed else None,
                     'all_readable_chats': profile.get('poll_write_all_chats', False),
-                    'group_chat_ids': list(profile.get('poll_write_chat_ids', []))}
+                    'group_chat_ids': [i for i in profile.get('poll_write_chat_ids', []) if not is_sensitive_peer(i)]}
 
     async def read(self, agent, chat_id, message_id):
         numeric_chat(chat_id); positive_message(message_id)

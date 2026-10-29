@@ -9,6 +9,7 @@ import time
 from .agents import AccessDenied
 from .private_state import opaque_id, read_private, secure_directory, write_json
 from .search_pages import validate_query
+from .sensitive_peer import GUARD_REVISION, is_sensitive_peer
 
 
 class SearchCursors:
@@ -18,7 +19,7 @@ class SearchCursors:
     @staticmethod
     def binding(profile, query, limit):
         scope = {key: profile.get(key) for key in ('agent', 'all_chats', 'chat_ids', 'actions', 'expires_at')}
-        return hashlib.sha256(json.dumps([scope, query, limit], sort_keys=True).encode()).hexdigest()
+        return hashlib.sha256(json.dumps([GUARD_REVISION, scope, query, limit], sort_keys=True).encode()).hexdigest()
 
     def load(self, token, binding):
         if not isinstance(token, str) or not re.fullmatch(r'[A-Za-z0-9_-]{32}', token):
@@ -72,7 +73,7 @@ class ScopedSearchMixin:
                          'phase': 'search',
                          'archived': False, 'dialog_cursor': None, 'chats': [], 'index': 0,
                          'before_id': 0, 'until_id': None, 'errors': [], 'snapshot_started_at': int(time.time())}
-                state['chats'] = [{'id': i} for i in sorted(set(profile.get('chat_ids', [])))]
+                state['chats'] = [{'id': i} for i in sorted(set(profile.get('chat_ids', []))) if not is_sensitive_peer(i)]
             output, calls, retry = [], 0, None
             deadline = time.monotonic() + 45
             while calls < request_budget and len(output) < limit and time.monotonic() < deadline:

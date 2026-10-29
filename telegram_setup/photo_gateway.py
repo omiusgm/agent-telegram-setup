@@ -14,12 +14,14 @@ from .file_transport import RESOURCE_INLINE_BYTES
 from .photos import image_preview
 from .saved_text import SavedTextGateway
 from .reader_gateway import ReaderGateway
+from .sensitive_peer import deny_sensitive_peer
 
 PHOTO_RESOURCE = 'telegram-photo://original/{staging_id}'
 
 
 class PhotoMixin:
     def photo_policy(self, agent, chat_id, message_id):
+        deny_sensitive_peer(chat_id)
         check_photo(self.registry.profile(agent), chat_id, message_id)
 
     def photo_bytes(self, agent, staging_id):

@@ -29,6 +29,7 @@ from .photos import synthetic_image_probe
 from .peer_gateway import register_peer_gateway
 from .attachment_gateway import register_attachment_gateway
 from .poll_gateway import PollGateway
+from .sensitive_peer import deny_sensitive_peer, redact_tokens, sanitize_account_search
 
 logging.getLogger('mcp').setLevel(logging.WARNING)
 
@@ -41,6 +42,11 @@ class UpstreamBridge:
         self.available_tools = frozenset(available_tools) if available_tools is not None else None
 
     async def call(self, name, args):
+        # Block the secret-bearing chat for every per-peer cloud operation.
+        # Global search is filtered separately, including old cached pages.
+        for key in ('chat_id', 'peer'):
+            if key in args:
+                deny_sensitive_peer(args[key])
         if name == 'search_community_metadata' and self.available_tools is not None and name not in self.available_tools:
             return {'error': 'public_search_backend_unavailable', 'leaf_error_category': 'capability_missing',
                     'leaf_error_type': 'ToolNotExposed'}
@@ -51,10 +57,12 @@ class UpstreamBridge:
             if wait:
                 return {'error': 'telegram_cooldown', 'retry_after_seconds': int(wait.group(1))}
         if isinstance(payload, dict) and payload.get('error') and type(payload.get('retry_after_seconds')) in (int, float):
-            return payload
+            return redact_tokens(payload)
         if result.isError:
             return {'error': 'upstream_read_failed'}
-        return payload
+        if name == 'read_account_search_page':
+            return sanitize_account_search(payload)
+        return redact_tokens(payload)
 
 
 @contextlib.asynccontextmanager
@@ -318,12 +326,12 @@ def create_gateway(registry, fixed_agent=None, upstream_factory=upstream_connect
         @mcp.tool(annotations=annotation)
         async def search_allowed_messages(ctx: Context, query: str, cursor: str | None = None,
                                            limit: StrictInt = 50, request_budget: StrictInt = 10) -> dict:
-            """Search all permitted dialogs including archive with a resumable cursor.
+            """Search permitted dialogs including archive, except the sensitive BotFather chat.
 
             Restricted agents use permitted-ID fan-out only, never global search.
             Keep the exact query and limit while using next_cursor. Budget limits
             work per call, not account coverage. Continue through empty pages;
-            complete=true only after every chat succeeds. Honour retry_after_seconds.
+            complete=true applies to the stated coverage. Honour retry_after_seconds.
             """
             api, agent = service(ctx)
             return await api.search_allowed(agent, query, cursor, limit, request_budget)

@@ -10,6 +10,7 @@ from pydantic import StrictInt,StrictStr,BaseModel
 from .peer_gateway import PeerGateway,structured,BinaryMetadata
 from .peer_profiles import peer_policy
 from .photos import image_preview
+from .sensitive_peer import deny_sensitive_peer
 
 ATTACHMENT_RESOURCE='telegram-attachment://original/{staging_id}'
 
@@ -29,6 +30,7 @@ class AttachmentGateway(PeerGateway):
     def original_bytes(self,agent,staging_id):
         peer_policy(self.api.registry,agent,'read-attachments')
         meta,data=self.store.load(agent,staging_id,kind='read-attachment')
+        deny_sensitive_peer(meta.get('chat_id'))
         peer_policy(self.api.registry,agent,'read-attachments',meta.get('chat_id'))
         return meta,data
 

@@ -12,6 +12,7 @@ from telethon.tl import functions, types
 from .agents import AccessDenied, AgentRegistry, check_action
 from .scoped_search import SearchCursors
 from .search_pages import validate_query
+from .sensitive_peer import is_sensitive_peer, redact_tokens
 
 ENGINE = 'account_global_v2'
 PAGE_BYTES = 1200000
@@ -142,7 +143,9 @@ class AccountSearchBackend:
                         continue
                     pair = str(ident) + ':' + str(message.id)
                     record = None
-                    if ident in verified and pair not in seen and not isinstance(message, types.MessageEmpty):
+                    if is_sensitive_peer(ident):
+                        omitted += 1
+                    elif ident in verified and pair not in seen and not isinstance(message, types.MessageEmpty):
                         finish = getattr(message, '_finish_init', None)
                         if finish:
                             finish(client, entities, None)
@@ -150,7 +153,7 @@ class AccountSearchBackend:
                         record = dict(self.converter(message, ident, bool(getattr(entity, 'forum', False))),
                                       chat_id=ident, chat_name=self.runtime.sanitize_name(
                                           getattr(entity, 'title', None) or self.runtime.person_name(entity) or str(ident)))
-                        record = json.loads(json.dumps(record, ensure_ascii=False, default=str))
+                        record = redact_tokens(json.loads(json.dumps(record, ensure_ascii=False, default=str)))
                         cost = len(json.dumps(record, ensure_ascii=False).encode())
                         if size + cost > PAGE_BYTES:
                             # next_rate belongs to the complete server page. Never invent
@@ -194,7 +197,7 @@ class AccountSearchBackend:
                     'omitted_records': omitted, 'telegram_rpc_calls': rpc_count,
                     'snapshot_started_at': state['max_date'] - 1,
                     'snapshot_kind': 'telegram_search_index_date_bound',
-                    'coverage': 'current_main_and_archived_account_dialogs',
+                    'coverage': 'current_account_dialogs_except_sensitive_chat',
                     'inexact': inexact, 'untrusted_content': True, 'cached_replay': False}
                 state['response'] = response; self.cursors.save(state, cursor)
                 return response

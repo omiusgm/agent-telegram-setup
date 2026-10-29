@@ -5,6 +5,7 @@ import time
 
 from .agents import check_action
 from .scoped_search import ScopedSearchMixin, SearchCursors
+from .sensitive_peer import deny_sensitive_peer, is_sensitive_peer
 
 UPSTREAM_READS = {
     'status': {'get_me'}, 'dialogs': {'read_dialog_page', 'get_chat'},
@@ -41,6 +42,8 @@ class ReaderGateway(ScopedSearchMixin):
 
     def policy(self, agent, action, chat_id=None):
         profile = self.registry.profile(agent)
+        if chat_id is not None:
+            deny_sensitive_peer(chat_id)
         check_action(profile, action, chat_id)
         return profile
 
@@ -86,6 +89,7 @@ class ReaderGateway(ScopedSearchMixin):
         connected = isinstance(result, dict) and result.get('type') == 'user' and not result.get('error')
         output = {'agent': agent, 'connected': connected, 'read_only': True,
                   'all_chats': profile.get('all_chats', False),
+                  'sensitive_botfather_excluded': True,
                   'allowed_chat_count': len(profile.get('chat_ids', []))}
         if not connected:
             # Failed identity observation is not proof of revoked authorization.
@@ -111,7 +115,7 @@ class ReaderGateway(ScopedSearchMixin):
         if cursor is not None and (not isinstance(cursor, str) or not re.fullmatch(r'r:[0-9]{1,5}', cursor)):
             raise ValueError('invalid_restricted_dialog_cursor')
         offset = int(cursor[2:]) if cursor else 0
-        ids = sorted(set(profile.get('chat_ids', [])))
+        ids = sorted(i for i in set(profile.get('chat_ids', [])) if not is_sensitive_peer(i))
         chosen = ids[offset:offset+limit]
         output = []
         for chat_id in chosen:

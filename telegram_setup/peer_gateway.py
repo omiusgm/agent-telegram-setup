@@ -12,6 +12,7 @@ from pydantic import StrictInt, StrictStr, BaseModel, ConfigDict
 
 from .peer_profiles import peer_policy,page_args
 from .photos import image_preview
+from .sensitive_peer import deny_sensitive_peer
 from .file_transport import RESOURCE_INLINE_BYTES
 
 AVATAR_RESOURCE='telegram-avatar://original/{staging_id}'
@@ -50,6 +51,7 @@ class PeerGateway:
     def __init__(self,api,store):self.api,self.store=api,store
 
     async def call(self,agent,action,name,peer,**args):
+        deny_sensitive_peer(peer)
         peer_policy(self.api.registry,agent,action,peer)
         async with self.api.lock:
             peer_policy(self.api.registry,agent,action,peer)
@@ -66,6 +68,7 @@ class PeerGateway:
                     raise ToolError(json.dumps({'error':'telegram_cooldown','retry_after_seconds':int(wait)+1}))
                 raise ToolError('peer_read_unavailable')
             numeric=result.get('peer_id')
+            deny_sensitive_peer(numeric)
             if type(numeric) is not int or numeric==0 or type(peer) is int and numeric!=peer:
                 raise ToolError('peer_identity_mismatch')
             peer_policy(self.api.registry,agent,action,numeric)
@@ -74,6 +77,7 @@ class PeerGateway:
     def original_bytes(self,agent,staging_id):
         peer_policy(self.api.registry,agent,'read-avatars')
         meta,data=self.store.load(agent,staging_id,kind='read-avatar')
+        deny_sensitive_peer(meta.get('peer_id'))
         peer_policy(self.api.registry,agent,'read-avatars',meta.get('peer_id'))
         if type(meta.get('photo_id')) is not int or meta['photo_id']<=0:raise ToolError('avatar_source_invalid')
         return meta,data
