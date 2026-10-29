@@ -34,6 +34,9 @@ def prepare():
     from .peer_profiles import register_peer_profiles
     from .requested_sources import register_requested_source
     from .poll_backend import register_poll_backend
+    from .owned_bots import register_owned_bots
+    from .newbot_backend import register_newbot_backend
+    from .owner_bot_notification_backend import register_owner_bot_notifications
     register_history_page(runtime)
     register_dialog_page(runtime)
     register_owned_inventory(runtime)
@@ -43,6 +46,9 @@ def prepare():
     register_peer_profiles(runtime)
     register_requested_source(runtime)
     register_poll_backend(runtime)
+    register_owned_bots(runtime)
+    register_newbot_backend(runtime)
+    register_owner_bot_notifications(runtime)
     enforce_transcription_engine(runner.mcp, settings)
     enforce_permission_snapshot(runner.mcp, settings)
     runner._telegram_setup_permissions = settings

@@ -15,7 +15,9 @@ READ_ACTIONS = frozenset({'status', 'dialogs', 'contacts', 'history', 'search', 
 SAVED_TEXT_ACTION = 'send-saved-text'
 OPTIONAL_ACTIONS = frozenset({'public-search', 'send-saved-file', 'download-saved-file', 'read-photo',
                               'read-profiles', 'read-avatars', 'read-attachments',
-                              'read-polls', 'create-polls', 'close-own-polls'})
+                              'read-polls', 'create-polls', 'close-own-polls',
+                              'read-owned-bots', 'edit-owned-bot-profile', 'create-owned-bot',
+                              'notify-owner-via-bot'})
 ACTIONS = READ_ACTIONS | {SAVED_TEXT_ACTION} | OPTIONAL_ACTIONS
 
 
@@ -51,6 +53,8 @@ class AgentRegistry:
             for key in ('all_chats', 'all_contacts', 'include_phones', 'poll_write_saved', 'poll_write_all_chats'):
                 if type(row.get(key, False)) is not bool:
                     raise AccessDenied('agent_registry_invalid')
+            if row.get('bot_create_mode', 'operator') not in ('operator', 'delegated'):
+                raise AccessDenied('agent_registry_invalid')
             for key in ('chat_ids', 'contact_ids'):
                 ids = row.get(key, [])
                 if (not isinstance(ids, list) or len(ids) > 10000
@@ -60,6 +64,14 @@ class AgentRegistry:
             poll_ids = row.get('poll_write_chat_ids', [])
             if (not isinstance(poll_ids, list) or len(poll_ids) > 1000
                     or any(type(x) is not int or x >= 0 for x in poll_ids)):
+                raise AccessDenied('agent_registry_invalid')
+            bot_ids = row.get('bot_profile_write_ids', [])
+            if (not isinstance(bot_ids, list) or len(bot_ids) > 200
+                    or any(type(x) is not int or x <= 0 for x in bot_ids)):
+                raise AccessDenied('agent_registry_invalid')
+            notify_ids = row.get('bot_notify_ids', [])
+            if (not isinstance(notify_ids, list) or len(notify_ids) > 200
+                    or any(type(x) is not int or x <= 0 for x in notify_ids)):
                 raise AccessDenied('agent_registry_invalid')
             actions = row.get('actions', [])
             sources = row.get('photo_sources', [])
@@ -144,6 +156,21 @@ def check_poll_target(profile, action, chat_id, owner_id, *, write):
         raise AccessDenied('poll_destination_not_permitted')
 
 
+def check_owned_bot(profile, action, bot_id=None, *, write=False):
+    """Bot-profile writes require an exact ID grant in addition to the action."""
+    check_action(profile, action)
+    if bot_id is not None and (type(bot_id) is not int or bot_id <= 0):
+        raise AccessDenied('numeric_bot_id_required')
+    if write and (bot_id is None or bot_id not in profile.get('bot_profile_write_ids', [])):
+        raise AccessDenied('bot_profile_target_not_permitted')
+
+
+def check_bot_notify(profile, bot_id):
+    check_action(profile, 'notify-owner-via-bot')
+    if type(bot_id) is not int or bot_id <= 0 or bot_id not in profile.get('bot_notify_ids', []):
+        raise AccessDenied('bot_notification_target_not_permitted')
+
+
 def main():
     from .config import prepare_private
     parser = argparse.ArgumentParser(description=__doc__)
@@ -169,6 +196,12 @@ def main():
     photo.add_argument('agent'); photo.add_argument('--chat-id', type=int, required=True)
     photo.add_argument('--message-id', type=int, required=True)
     sub.add_parser('revoke-read-photo').add_argument('agent')
+    for operation in ('grant', 'revoke'):
+        target = sub.add_parser(operation + '-bot-profile')
+        target.add_argument('agent'); target.add_argument('--bot-id', type=int, required=True)
+        sub.add_parser(operation + '-bot-delegated').add_argument('agent')
+        target = sub.add_parser(operation + '-bot-notify')
+        target.add_argument('agent'); target.add_argument('--bot-id', type=int, required=True)
     revoke = sub.add_parser('revoke'); revoke.add_argument('agent')
     for name in ('grant-saved-text', 'revoke-saved-text'):
         sub.add_parser(name).add_argument('agent')
@@ -180,7 +213,8 @@ def main():
     scopes = {'public-search': 'public-search', 'saved-upload': 'send-saved-file',
               'saved-download': 'download-saved-file', 'profiles': 'read-profiles', 'avatars': 'read-avatars',
               'attachments': 'read-attachments', 'poll-read': 'read-polls',
-              'poll-create': 'create-polls', 'poll-close': 'close-own-polls'}
+              'poll-create': 'create-polls', 'poll-close': 'close-own-polls', 'bot-read': 'read-owned-bots',
+              'bot-create': 'create-owned-bot'}
     for scope in scopes:
         for operation in ('grant', 'revoke'):
             sub.add_parser(operation + '-' + scope).add_argument('agent')
@@ -188,6 +222,48 @@ def main():
     args = parser.parse_args()
     registry = AgentRegistry(args.registry or prepare_private() / 'agents.json')
     data = registry.load() if registry.path.exists() else {'schema_version': 1, 'agents': {}}
+    if args.action in ('grant-bot-delegated', 'revoke-bot-delegated'):
+        if args.agent not in data['agents']: parser.error('Unknown agent')
+        row = data['agents'][args.agent]
+        if args.action.startswith('grant-'):
+            if 'create-owned-bot' not in row.get('actions', []):
+                parser.error('Separate create-owned-bot action must be granted first')
+            row['bot_create_mode'] = 'delegated'
+        else:
+            row.pop('bot_create_mode', None)
+        registry.save(data)
+        print('Bot creation mode updated; no Telegram operation was performed.')
+        return
+    if args.action in ('grant-bot-notify', 'revoke-bot-notify'):
+        if args.agent not in data['agents'] or args.bot_id <= 0:
+            parser.error('Known agent and positive bot ID required')
+        row = data['agents'][args.agent]
+        ids = set(row.get('bot_notify_ids', []))
+        if args.action.startswith('grant-'): ids.add(args.bot_id)
+        else: ids.discard(args.bot_id)
+        if len(ids) > 200: parser.error('At most 200 exact bot targets')
+        actions = set(row.get('actions', []))
+        if ids: actions.add('notify-owner-via-bot')
+        else: actions.discard('notify-owner-via-bot')
+        row['bot_notify_ids'] = sorted(ids); row['actions'] = sorted(actions)
+        registry.save(data)
+        print('Owner-only bot notification permission updated; nothing sent.')
+        return
+    if args.action in ('grant-bot-profile', 'revoke-bot-profile'):
+        if args.agent not in data['agents'] or args.bot_id <= 0:
+            parser.error('Known agent and positive bot ID required')
+        row = data['agents'][args.agent]
+        ids = set(row.get('bot_profile_write_ids', []))
+        if args.action.startswith('grant-'): ids.add(args.bot_id)
+        else: ids.discard(args.bot_id)
+        if len(ids) > 200: parser.error('At most 200 exact bot targets')
+        actions = set(row.get('actions', []))
+        if ids: actions.add('edit-owned-bot-profile')
+        else: actions.discard('edit-owned-bot-profile')
+        row['bot_profile_write_ids'] = sorted(ids); row['actions'] = sorted(actions)
+        registry.save(data)
+        print('Exact bot profile permission updated; no Telegram operation was performed.')
+        return
     if args.action in ('grant-poll-saved', 'revoke-poll-saved', 'grant-poll-chat', 'revoke-poll-chat',
                        'grant-poll-all-chats', 'revoke-poll-all-chats'):
         if args.agent not in data['agents']:
@@ -238,6 +314,9 @@ def main():
             'poll_write_saved': row.get('poll_write_saved', False),
             'poll_write_all_chats': row.get('poll_write_all_chats', False),
             'poll_write_chat_count': len(row.get('poll_write_chat_ids', [])),
+            'bot_create_mode': row.get('bot_create_mode', 'operator'),
+            'bot_profile_write_count': len(row.get('bot_profile_write_ids', [])),
+            'bot_notification_target_count': len(row.get('bot_notify_ids', [])),
             'optional_actions': sorted(set(row.get('actions', [])) & OPTIONAL_ACTIONS)}
             for name, row in data['agents'].items()}))
         return
@@ -245,6 +324,7 @@ def main():
         if args.agent not in data['agents']:
             parser.error('Unknown agent')
         data['agents'][args.agent]['enabled'] = False
+        data['agents'][args.agent].pop('bot_create_mode', None)
         registry.save(data)
         print('Agent revoked; subsequent requests are denied.')
         return
@@ -269,6 +349,8 @@ def main():
                 actions.add(permission)
             else:
                 actions.discard(permission)
+                if permission == 'create-owned-bot':
+                    data['agents'][args.agent].pop('bot_create_mode', None)
             data['agents'][args.agent]['actions'] = sorted(actions)
             registry.save(data)
             print('Optional permission updated; no Telegram message or file was sent.')
@@ -300,7 +382,9 @@ def main():
         token_path.unlink(missing_ok=True)
         raise
     print(json.dumps({'agent': args.agent, 'token_file': str(token_path),
-                      'raw_token_printed': False, 'read_only': not (args.send_saved_text or args.send_saved_file or args.create_polls or args.close_own_polls)}))
+                      'raw_token_printed': False, 'read_only': not (args.send_saved_text or args.send_saved_file
+                          or args.create_polls or args.close_own_polls or args.create_owned_bot
+                          or args.edit_owned_bot_profile or args.notify_owner_via_bot)}))
 
 
 if __name__ == '__main__':

@@ -30,6 +30,9 @@ from .peer_gateway import register_peer_gateway
 from .attachment_gateway import register_attachment_gateway
 from .poll_gateway import PollGateway
 from .sensitive_peer import deny_sensitive_peer, redact_tokens, sanitize_account_search
+from .owned_bot_gateway import register_owned_bot_gateway
+from .newbot_gateway import register_newbot_gateway
+from .owner_bot_notification_gateway import register_owner_bot_notification_gateway
 
 logging.getLogger('mcp').setLevel(logging.WARNING)
 
@@ -42,8 +45,8 @@ class UpstreamBridge:
         self.available_tools = frozenset(available_tools) if available_tools is not None else None
 
     async def call(self, name, args):
-        # Block the secret-bearing chat for every per-peer cloud operation.
-        # Global search is filtered separately, including old cached pages.
+        # Never invoke a per-peer backend tool on the secret-bearing BotFather
+        # chat.  Global search is filtered separately, including old cursors.
         for key in ('chat_id', 'peer'):
             if key in args:
                 deny_sensitive_peer(args[key])
@@ -91,7 +94,8 @@ def validate_backend_catalog(catalog):
     # The owner-requested join tool stays on the local backend. Its presence
     # does not register or grant a join tool on the remote reader facade.
     known_local_writes = {'send_message', 'reply_to_message', 'send_staged_saved_file',
-                          'join_owner_requested_source', 'agent_create_poll', 'agent_close_own_poll'}
+                          'join_owner_requested_source', 'agent_create_poll', 'agent_close_own_poll',
+                          'agent_update_owned_bot_profile', 'agent_request_owned_bot', 'agent_notify_owner_via_bot'}
     if any(not t.annotations or (not t.annotations.readOnlyHint and t.name not in known_local_writes)
            for t in catalog):
         raise RuntimeError('backend_exposes_unsupported_writes')
@@ -125,7 +129,13 @@ def create_gateway(registry, fixed_agent=None, upstream_factory=upstream_connect
                    *, enable_saved_text=False, receipt_dir=None, enable_search=False,
                    enable_saved_files=False, file_store=None, file_hosts=(), enable_file_probe=False,
                    enable_read_photo=False, enable_image_probe=False, enable_profiles=False, enable_attachments=False,
-                   enable_polls=False):
+                   enable_polls=False, enable_owned_bots=False, enable_newbot=False, enable_bot_notifications=False):
+    if enable_bot_notifications and fixed_agent is None:
+        raise ValueError('bot_notifications_require_fixed_stdio_agent')
+    if enable_newbot and fixed_agent is None:
+        raise ValueError('newbot_requires_fixed_stdio_agent')
+    if enable_owned_bots and fixed_agent is None:
+        raise ValueError('owned_bots_require_fixed_stdio_agent')
     if enable_polls and fixed_agent is None:
         raise ValueError('polls_require_fixed_stdio_agent')
     if enable_attachments and fixed_agent is None:
@@ -188,6 +198,12 @@ def create_gateway(registry, fixed_agent=None, upstream_factory=upstream_connect
         register_peer_gateway(mcp, service, file_store or StagedFiles(private_dir()/'files/agent-staging'))
     if enable_attachments:
         register_attachment_gateway(mcp, service, file_store or StagedFiles(private_dir()/'files/agent-staging'))
+    if enable_owned_bots:
+        register_owned_bot_gateway(mcp, service)
+    if enable_newbot:
+        register_newbot_gateway(mcp, service)
+    if enable_bot_notifications:
+        register_owner_bot_notification_gateway(mcp, service)
 
     if enable_image_probe:
         @mcp.tool(annotations=annotation)
@@ -275,6 +291,32 @@ def create_gateway(registry, fixed_agent=None, upstream_factory=upstream_connect
                     and (('create-polls' in actions and 'agent_create_poll' in available)
                          or ('close-own-polls' in actions and 'agent_close_own_poll' in available))):
                 result['read_only'] = False
+        if enable_owned_bots:
+            profile = registry.profile(agent); actions = profile.get('actions', [])
+            available = getattr(api.upstream, 'available_tools', frozenset()) or frozenset()
+            result.update(owned_bot_read_allowed='read-owned-bots' in actions,
+                owned_bot_edit_allowed='edit-owned-bot-profile' in actions,
+                owned_bot_edit_target_count=len(profile.get('bot_profile_write_ids', [])),
+                owned_bot_read_backend_ready={'agent_list_owned_bots', 'agent_get_owned_bot_profile'} <= available,
+                owned_bot_edit_backend_ready='agent_update_owned_bot_profile' in available)
+            if ('edit-owned-bot-profile' in actions and profile.get('bot_profile_write_ids')
+                    and 'agent_update_owned_bot_profile' in available):
+                result['read_only'] = False
+        if enable_newbot:
+            actions = registry.profile(agent).get('actions', [])
+            available = getattr(api.upstream, 'available_tools', frozenset()) or frozenset()
+            result.update(newbot_allowed='create-owned-bot' in actions,
+                          newbot_authorization_mode=registry.profile(agent).get('bot_create_mode', 'operator'),
+                          newbot_backend_ready='agent_request_owned_bot' in available)
+            if result['newbot_allowed'] and result['newbot_backend_ready']:
+                result['read_only'] = False
+        if enable_bot_notifications:
+            profile = registry.profile(agent); available = getattr(api.upstream, 'available_tools', frozenset()) or frozenset()
+            result.update(bot_notification_allowed='notify-owner-via-bot' in profile.get('actions', []),
+                bot_notification_target_count=len(profile.get('bot_notify_ids', [])),
+                bot_notification_backend_ready='agent_notify_owner_via_bot' in available)
+            if (result['bot_notification_allowed'] and result['bot_notification_target_count']
+                    and result['bot_notification_backend_ready']): result['read_only'] = False
         return result
 
     @mcp.tool(annotations=annotation)
@@ -467,7 +509,7 @@ def create_gateway(registry, fixed_agent=None, upstream_factory=upstream_connect
             api, agent = service(ctx)
             return await api.polls.close(agent, chat_id, message_id, request_id)
 
-    if enable_saved_text or enable_saved_files or enable_file_probe or enable_read_photo or enable_image_probe or enable_profiles or enable_attachments or enable_polls:
+    if enable_saved_text or enable_saved_files or enable_file_probe or enable_read_photo or enable_image_probe or enable_profiles or enable_attachments or enable_polls or enable_owned_bots or enable_newbot or enable_bot_notifications:
         original_call = mcp._tool_manager.call_tool
 
         @wraps(original_call)
@@ -496,6 +538,11 @@ def create_gateway(registry, fixed_agent=None, upstream_factory=upstream_connect
                 'list_poll_destinations': set(),
                 'create_poll': {'chat_id', 'question', 'options', 'request_id', 'anonymous', 'multiple_choice', 'quiz_correct_index'},
                 'close_own_poll': {'chat_id', 'message_id', 'request_id'},
+                'list_owned_bots': set(),
+                'get_owned_bot_profile': {'bot_id'},
+                'update_owned_bot_profile': {'bot_id', 'request_id', 'name', 'about', 'description'},
+                'request_owned_bot': {'name', 'username', 'request_id'},
+                'notify_owner_from_bot': {'bot_id', 'text', 'request_id'},
             }
             if name in allowed and (not isinstance(arguments, dict) or set(arguments) - allowed[name]):
                 raise ToolError('file_tool_does_not_accept_recipient_path_account_or_agent')
@@ -544,6 +591,9 @@ def main():
     parser.add_argument('--enable-profiles', action='store_true', help='Read-only profile cards and visible avatars; separate agent grants')
     parser.add_argument('--enable-attachments', action='store_true', help='Actual document/photo bytes from permitted chats, read-only')
     parser.add_argument('--enable-polls', action='store_true', help='Opt-in bounded poll tools; separate action and target grants required')
+    parser.add_argument('--enable-owned-bots', action='store_true', help='Opt-in owned-bot profile tools with separate grants')
+    parser.add_argument('--enable-newbot', action='store_true', help='Opt-in fixed, individually asserted BotFather creation')
+    parser.add_argument('--enable-bot-notifications', action='store_true', help='Opt-in exact-bot notifications to the account owner')
     parser.add_argument('--file-host', action='append', default=[],
                         help='Exact HTTPS host allowed for native host-provided file input; no URLs/secrets')
     args = parser.parse_args()
@@ -558,11 +608,13 @@ def main():
             file_hosts=args.file_host, enable_file_probe=args.enable_file_probe,
             enable_read_photo=args.enable_read_photo, enable_image_probe=args.enable_image_probe,
             enable_profiles=args.enable_profiles, enable_attachments=args.enable_attachments,
-            enable_polls=args.enable_polls).run(transport='stdio')
+            enable_polls=args.enable_polls, enable_owned_bots=args.enable_owned_bots,
+            enable_newbot=args.enable_newbot, enable_bot_notifications=args.enable_bot_notifications).run(transport='stdio')
     else:
         if (args.agent or args.enable_saved_text or args.enable_saved_files or args.enable_search or args.enable_file_probe
                 or args.enable_read_photo or args.enable_image_probe or args.enable_profiles or args.enable_attachments
-                or args.enable_polls or args.file_host or not 1024 <= args.port <= 65535):
+                or args.enable_polls or args.enable_owned_bots or args.enable_newbot or args.enable_bot_notifications
+                or args.file_host or not 1024 <= args.port <= 65535):
             parser.error('HTTP identities come from bearer tokens; choose a valid unprivileged port')
         import uvicorn
         app = create_http_app(registry)

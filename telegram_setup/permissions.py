@@ -49,6 +49,14 @@ CAPABILITIES = {
                           ("agent_create_poll",)),
     "agent-poll-close": ("Закрытие своих опросов для удалённых агентов", "Только опрос, авторство которого Telegram подтверждает для текущего аккаунта.",
                          ("agent_close_own_poll",)),
+    "agent-bot-read": ("Список и профили своих ботов", "Только боты владельца, без токенов и переписки BotFather.",
+                       ("agent_list_owned_bots", "agent_get_owned_bot_profile")),
+    "agent-bot-edit": ("Изменение профиля выбранного своего бота", "Только явно разрешённые боты, без токена и изменения его настроек.",
+                       ("agent_update_owned_bot_profile",)),
+    "agent-bot-create": ("Создание ботов", "Отдельное право агента; режим оператора по умолчанию или явно выбранное делегирование.",
+                         ("agent_request_owned_bot",)),
+    "agent-bot-notify": ("Уведомления владельцу от выбранного бота", "Только личный чат владельца и отдельно разрешённый бот, без входящих команд.",
+                         ("agent_notify_owner_via_bot",)),
 }
 ENGINES = {
     "telegram": "Telegram: распознавание средствами Telegram; доступность и лимиты зависят от аккаунта.",
@@ -116,7 +124,8 @@ def exposed_tools(data):
                       "read-photo": ("download_scoped_photo",),
                       "agent-profiles": CAPABILITIES["agent-profiles"][2],
                       "agent-attachments": CAPABILITIES["agent-attachments"][2],
-                      "agent-poll-read": CAPABILITIES["agent-poll-read"][2]}
+                      "agent-poll-read": CAPABILITIES["agent-poll-read"][2],
+                      "agent-bot-read": CAPABILITIES["agent-bot-read"][2]}
     excluded = {tool for name, tools in optional_reads.items() if name not in enabled for tool in tools}
     return "read-only" + ("+" + ",".join(sorted(extras)) if extras else "") + ("-" + ",".join(sorted(excluded)) if excluded else "")
 
