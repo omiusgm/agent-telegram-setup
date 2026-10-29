@@ -14,7 +14,8 @@ from pathlib import Path
 READ_ACTIONS = frozenset({'status', 'dialogs', 'contacts', 'history', 'search', 'messages'})
 SAVED_TEXT_ACTION = 'send-saved-text'
 OPTIONAL_ACTIONS = frozenset({'public-search', 'send-saved-file', 'download-saved-file', 'read-photo',
-                              'read-profiles', 'read-avatars', 'read-attachments'})
+                              'read-profiles', 'read-avatars', 'read-attachments',
+                              'read-polls', 'create-polls', 'close-own-polls'})
 ACTIONS = READ_ACTIONS | {SAVED_TEXT_ACTION} | OPTIONAL_ACTIONS
 
 
@@ -47,7 +48,7 @@ class AgentRegistry:
                 raise AccessDenied('agent_registry_invalid')
             if row['enabled'] and digest is None:
                 raise AccessDenied('agent_registry_invalid')
-            for key in ('all_chats', 'all_contacts', 'include_phones'):
+            for key in ('all_chats', 'all_contacts', 'include_phones', 'poll_write_saved'):
                 if type(row.get(key, False)) is not bool:
                     raise AccessDenied('agent_registry_invalid')
             for key in ('chat_ids', 'contact_ids'):
@@ -56,6 +57,10 @@ class AgentRegistry:
                         or any(type(x) is not int or x == 0 for x in ids)
                         or (key == 'contact_ids' and any(x < 0 for x in ids))):
                     raise AccessDenied('agent_registry_invalid')
+            poll_ids = row.get('poll_write_chat_ids', [])
+            if (not isinstance(poll_ids, list) or len(poll_ids) > 1000
+                    or any(type(x) is not int or x >= 0 for x in poll_ids)):
+                raise AccessDenied('agent_registry_invalid')
             actions = row.get('actions', [])
             sources = row.get('photo_sources', [])
             if (not isinstance(sources, list) or len(sources) > 200 or any(
@@ -125,6 +130,19 @@ def check_photo(profile, chat_id, message_id):
         raise AccessDenied('photo_source_not_permitted')
 
 
+def check_poll_target(profile, action, chat_id, owner_id, *, write):
+    """Poll writes need their own exact targets, independently of all_chats."""
+    check_action(profile, action)
+    if type(chat_id) is not int or chat_id == 0 or type(owner_id) is not int or owner_id <= 0:
+        raise AccessDenied('numeric_chat_id_required')
+    if chat_id == owner_id and profile.get('poll_write_saved', False):
+        check_action(profile, 'history')
+        return
+    check_action(profile, 'history', chat_id)
+    if write and (chat_id >= 0 or chat_id not in profile.get('poll_write_chat_ids', [])):
+        raise AccessDenied('poll_destination_not_permitted')
+
+
 def main():
     from .config import prepare_private
     parser = argparse.ArgumentParser(description=__doc__)
@@ -135,6 +153,8 @@ def main():
     add.add_argument('--contact-id', action='append', type=int, default=[])
     add.add_argument('--all-chats', action='store_true'); add.add_argument('--all-contacts', action='store_true')
     add.add_argument('--include-phones', action='store_true')
+    add.add_argument('--poll-saved', action='store_true', help='Permit separately granted poll writes to Saved Messages')
+    add.add_argument('--poll-chat-id', action='append', type=int, default=[], help='Exact group/channel target for separately granted poll writes')
     add.add_argument('--expires-days', type=int, default=30)
     add.add_argument('--token-file', required=True)
     add.add_argument('--send-saved-text', action='store_true',
@@ -150,9 +170,14 @@ def main():
     revoke = sub.add_parser('revoke'); revoke.add_argument('agent')
     for name in ('grant-saved-text', 'revoke-saved-text'):
         sub.add_parser(name).add_argument('agent')
+    for operation in ('grant', 'revoke'):
+        sub.add_parser(operation + '-poll-saved').add_argument('agent')
+        target = sub.add_parser(operation + '-poll-chat')
+        target.add_argument('agent'); target.add_argument('--chat-id', type=int, required=True)
     scopes = {'public-search': 'public-search', 'saved-upload': 'send-saved-file',
               'saved-download': 'download-saved-file', 'profiles': 'read-profiles', 'avatars': 'read-avatars',
-              'attachments': 'read-attachments'}
+              'attachments': 'read-attachments', 'poll-read': 'read-polls',
+              'poll-create': 'create-polls', 'poll-close': 'close-own-polls'}
     for scope in scopes:
         for operation in ('grant', 'revoke'):
             sub.add_parser(operation + '-' + scope).add_argument('agent')
@@ -160,6 +185,23 @@ def main():
     args = parser.parse_args()
     registry = AgentRegistry(args.registry or prepare_private() / 'agents.json')
     data = registry.load() if registry.path.exists() else {'schema_version': 1, 'agents': {}}
+    if args.action in ('grant-poll-saved', 'revoke-poll-saved', 'grant-poll-chat', 'revoke-poll-chat'):
+        if args.agent not in data['agents']:
+            parser.error('Unknown agent')
+        row = data['agents'][args.agent]
+        if args.action.endswith('poll-saved'):
+            row['poll_write_saved'] = args.action.startswith('grant-')
+        else:
+            if args.chat_id >= 0:
+                parser.error('Poll group/channel targets require a negative numeric chat ID')
+            ids = set(row.get('poll_write_chat_ids', []))
+            if args.action.startswith('grant-'): ids.add(args.chat_id)
+            else: ids.discard(args.chat_id)
+            if len(ids) > 1000: parser.error('At most 1000 exact poll targets')
+            row['poll_write_chat_ids'] = sorted(ids)
+        registry.save(data)
+        print('Poll destination updated; no Telegram operation was performed.')
+        return
     if args.action in ('grant-read-photo', 'revoke-read-photo'):
         if args.agent not in data['agents']:
             parser.error('Unknown agent')
@@ -187,6 +229,8 @@ def main():
             'all_chats': row.get('all_chats', False), 'chat_count': len(row.get('chat_ids', [])),
             'all_contacts': row.get('all_contacts', False), 'contact_count': len(row.get('contact_ids', [])),
             'send_saved_text': SAVED_TEXT_ACTION in row.get('actions', []),
+            'poll_write_saved': row.get('poll_write_saved', False),
+            'poll_write_chat_count': len(row.get('poll_write_chat_ids', [])),
             'optional_actions': sorted(set(row.get('actions', [])) & OPTIONAL_ACTIONS)}
             for name, row in data['agents'].items()}))
         return
@@ -226,7 +270,7 @@ def main():
         parser.error('Invalid agent or lifetime')
     if args.agent in data['agents']:
         parser.error('Agent already exists; use a new identity or revoke it first.')
-    if any(x == 0 for x in args.chat_id) or any(x <= 0 for x in args.contact_id):
+    if any(x == 0 for x in args.chat_id) or any(x <= 0 for x in args.contact_id) or any(x >= 0 for x in args.poll_chat_id):
         parser.error('Invalid chat/contact ID')
     token_path = Path(args.token_file).expanduser().absolute()
     token = secrets.token_urlsafe(32)
@@ -240,6 +284,7 @@ def main():
             'all_chats': args.all_chats, 'chat_ids': sorted(set(args.chat_id)),
             'all_contacts': args.all_contacts, 'contact_ids': sorted(set(args.contact_id)),
             'include_phones': args.include_phones,
+            'poll_write_saved': args.poll_saved, 'poll_write_chat_ids': sorted(set(args.poll_chat_id)),
             'actions': sorted(READ_ACTIONS | ({SAVED_TEXT_ACTION} if args.send_saved_text else set()) |
                               {name for name in OPTIONAL_ACTIONS if getattr(args, name.replace('-', '_'), False)})}
         registry.save(data)
@@ -247,7 +292,7 @@ def main():
         token_path.unlink(missing_ok=True)
         raise
     print(json.dumps({'agent': args.agent, 'token_file': str(token_path),
-                      'raw_token_printed': False, 'read_only': not (args.send_saved_text or args.send_saved_file)}))
+                      'raw_token_printed': False, 'read_only': not (args.send_saved_text or args.send_saved_file or args.create_polls or args.close_own_polls)}))
 
 
 if __name__ == '__main__':

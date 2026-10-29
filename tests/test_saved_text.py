@@ -200,8 +200,9 @@ class SavedTextTests(RegistryFixture, unittest.IsolatedAsyncioTestCase):
             return Tool(name=name, inputSchema={'type': 'object'},
                         annotations=ToolAnnotations(readOnlyHint=readonly))
         validate_backend_catalog([tool('get_me', True), tool('send_message', False), tool('reply_to_message', False),
-                                  tool('join_owner_requested_source', False)])
-        for bad in ('send_file', 'delete_message', 'mark_as_read'):
+                                  tool('join_owner_requested_source', False),
+                                  tool('agent_create_poll', False), tool('agent_close_own_poll', False)])
+        for bad in ('send_file', 'delete_message', 'mark_as_read', 'create_poll', 'vote_poll'):
             with self.assertRaises(RuntimeError):
                 validate_backend_catalog([tool(bad, False)])
 

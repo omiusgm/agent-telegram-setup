@@ -33,6 +33,7 @@ def prepare():
     from .photos import register_photos
     from .peer_profiles import register_peer_profiles
     from .requested_sources import register_requested_source
+    from .poll_backend import register_poll_backend
     register_history_page(runtime)
     register_dialog_page(runtime)
     register_owned_inventory(runtime)
@@ -41,6 +42,7 @@ def prepare():
     register_photos(runtime)
     register_peer_profiles(runtime)
     register_requested_source(runtime)
+    register_poll_backend(runtime)
     enforce_transcription_engine(runner.mcp, settings)
     enforce_permission_snapshot(runner.mcp, settings)
     runner._telegram_setup_permissions = settings

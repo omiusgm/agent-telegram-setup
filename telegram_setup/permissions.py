@@ -43,6 +43,12 @@ CAPABILITIES = {
                           ("download_agent_attachment",)),
     "requested-source-join": ("Вступление в источники по запросу владельца", "Только ссылка, полученная из подтверждённого сообщения владельца агенту; без отправки сообщений.",
                               ("join_owner_requested_source",)),
+    "agent-poll-read": ("Результаты опросов для удалённых агентов", "Читать состояние и доступные результаты в разрешённых чатах; без голосования.",
+                        ("agent_read_poll",)),
+    "agent-poll-create": ("Создание опросов для удалённых агентов", "Отдельное адресное разрешение и устойчивый request_id обязательны.",
+                          ("agent_create_poll",)),
+    "agent-poll-close": ("Закрытие своих опросов для удалённых агентов", "Только опрос, авторство которого Telegram подтверждает для текущего аккаунта.",
+                         ("agent_close_own_poll",)),
 }
 ENGINES = {
     "telegram": "Telegram: распознавание средствами Telegram; доступность и лимиты зависят от аккаунта.",
@@ -109,7 +115,8 @@ def exposed_tools(data):
                       "saved-files": ("download_saved_attachment",),
                       "read-photo": ("download_scoped_photo",),
                       "agent-profiles": CAPABILITIES["agent-profiles"][2],
-                      "agent-attachments": CAPABILITIES["agent-attachments"][2]}
+                      "agent-attachments": CAPABILITIES["agent-attachments"][2],
+                      "agent-poll-read": CAPABILITIES["agent-poll-read"][2]}
     excluded = {tool for name, tools in optional_reads.items() if name not in enabled for tool in tools}
     return "read-only" + ("+" + ",".join(sorted(extras)) if extras else "") + ("-" + ",".join(sorted(excluded)) if excluded else "")
 
