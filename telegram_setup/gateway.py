@@ -256,12 +256,14 @@ def create_gateway(registry, fixed_agent=None, upstream_factory=upstream_connect
             available = getattr(api.upstream, 'available_tools', frozenset()) or frozenset()
             result.update(poll_read_allowed='read-polls' in actions,
                 poll_create_allowed='create-polls' in actions, poll_close_allowed='close-own-polls' in actions,
-                poll_saved_target=profile.get('poll_write_saved', False),
+                poll_saved_target=profile.get('poll_write_saved', False) or profile.get('poll_write_all_chats', False),
+                poll_saved_explicit=profile.get('poll_write_saved', False),
+                poll_write_all_chats=profile.get('poll_write_all_chats', False),
                 poll_group_target_count=len(profile.get('poll_write_chat_ids', [])),
                 poll_read_backend_ready='agent_read_poll' in available,
                 poll_create_backend_ready='agent_create_poll' in available,
                 poll_close_backend_ready='agent_close_own_poll' in available)
-            if ((profile.get('poll_write_saved', False) or profile.get('poll_write_chat_ids', []))
+            if ((profile.get('poll_write_saved', False) or profile.get('poll_write_all_chats', False) or profile.get('poll_write_chat_ids', []))
                     and (('create-polls' in actions and 'agent_create_poll' in available)
                          or ('close-own-polls' in actions and 'agent_close_own_poll' in available))):
                 result['read_only'] = False

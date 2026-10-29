@@ -47,11 +47,14 @@ class PollGateway:
             if not {'create-polls','close-own-polls'} & set(profile.get('actions', [])):
                 raise AccessDenied('action_not_permitted')
             if self._wait(): return {'error':'telegram_cooldown','retry_after_seconds':self._wait()}
-            owner = await self._owner() if profile.get('poll_write_saved', False) else None
+            saved_allowed = profile.get('poll_write_saved', False) or profile.get('poll_write_all_chats', False)
+            owner = await self._owner() if saved_allowed else None
             profile = self.api.registry.profile(agent)
             if not {'create-polls','close-own-polls'} & set(profile.get('actions', [])):
                 raise AccessDenied('action_not_permitted')
-            return {'saved_chat_id': owner if profile.get('poll_write_saved', False) else None,
+            saved_allowed = profile.get('poll_write_saved', False) or profile.get('poll_write_all_chats', False)
+            return {'saved_chat_id': owner if saved_allowed else None,
+                    'all_readable_chats': profile.get('poll_write_all_chats', False),
                     'group_chat_ids': list(profile.get('poll_write_chat_ids', []))}
 
     async def read(self, agent, chat_id, message_id):
@@ -103,7 +106,7 @@ class PollGateway:
                 if isinstance(result,dict) and type(result.get('retry_after_seconds')) is int:
                     receipt['retry_after_seconds'] = result['retry_after_seconds']
                 if (isinstance(result, dict) and result.get('sent') is False
-                        and result.get('error') in ('public_votes_not_allowed_in_channel','telegram_cooldown','poll_target_not_available')):
+                        and result.get('error') in ('public_votes_not_allowed_in_channel','telegram_cooldown','poll_target_not_available','poll_private_peer_not_supported')):
                     receipt.update(status='rejected_not_sent', error=result['error'])
                 if isinstance(result, dict) and type(result.get('message_id')) is int and result['message_id'] > 0:
                     message_id = result['message_id']; receipt['message_id'] = message_id

@@ -48,7 +48,7 @@ class AgentRegistry:
                 raise AccessDenied('agent_registry_invalid')
             if row['enabled'] and digest is None:
                 raise AccessDenied('agent_registry_invalid')
-            for key in ('all_chats', 'all_contacts', 'include_phones', 'poll_write_saved'):
+            for key in ('all_chats', 'all_contacts', 'include_phones', 'poll_write_saved', 'poll_write_all_chats'):
                 if type(row.get(key, False)) is not bool:
                     raise AccessDenied('agent_registry_invalid')
             for key in ('chat_ids', 'contact_ids'):
@@ -135,11 +135,12 @@ def check_poll_target(profile, action, chat_id, owner_id, *, write):
     check_action(profile, action)
     if type(chat_id) is not int or chat_id == 0 or type(owner_id) is not int or owner_id <= 0:
         raise AccessDenied('numeric_chat_id_required')
-    if chat_id == owner_id and profile.get('poll_write_saved', False):
+    if chat_id == owner_id and (profile.get('poll_write_saved', False) or profile.get('poll_write_all_chats', False)):
         check_action(profile, 'history')
         return
     check_action(profile, 'history', chat_id)
-    if write and (chat_id >= 0 or chat_id not in profile.get('poll_write_chat_ids', [])):
+    if write and not (profile.get('poll_write_all_chats', False)
+                      or (chat_id < 0 and chat_id in profile.get('poll_write_chat_ids', []))):
         raise AccessDenied('poll_destination_not_permitted')
 
 
@@ -154,6 +155,7 @@ def main():
     add.add_argument('--all-chats', action='store_true'); add.add_argument('--all-contacts', action='store_true')
     add.add_argument('--include-phones', action='store_true')
     add.add_argument('--poll-saved', action='store_true', help='Permit separately granted poll writes to Saved Messages')
+    add.add_argument('--poll-all-chats', action='store_true', help='Explicitly permit separately granted poll writes in all readable chats')
     add.add_argument('--poll-chat-id', action='append', type=int, default=[], help='Exact group/channel target for separately granted poll writes')
     add.add_argument('--expires-days', type=int, default=30)
     add.add_argument('--token-file', required=True)
@@ -172,6 +174,7 @@ def main():
         sub.add_parser(name).add_argument('agent')
     for operation in ('grant', 'revoke'):
         sub.add_parser(operation + '-poll-saved').add_argument('agent')
+        sub.add_parser(operation + '-poll-all-chats').add_argument('agent')
         target = sub.add_parser(operation + '-poll-chat')
         target.add_argument('agent'); target.add_argument('--chat-id', type=int, required=True)
     scopes = {'public-search': 'public-search', 'saved-upload': 'send-saved-file',
@@ -185,12 +188,15 @@ def main():
     args = parser.parse_args()
     registry = AgentRegistry(args.registry or prepare_private() / 'agents.json')
     data = registry.load() if registry.path.exists() else {'schema_version': 1, 'agents': {}}
-    if args.action in ('grant-poll-saved', 'revoke-poll-saved', 'grant-poll-chat', 'revoke-poll-chat'):
+    if args.action in ('grant-poll-saved', 'revoke-poll-saved', 'grant-poll-chat', 'revoke-poll-chat',
+                       'grant-poll-all-chats', 'revoke-poll-all-chats'):
         if args.agent not in data['agents']:
             parser.error('Unknown agent')
         row = data['agents'][args.agent]
         if args.action.endswith('poll-saved'):
             row['poll_write_saved'] = args.action.startswith('grant-')
+        elif args.action.endswith('poll-all-chats'):
+            row['poll_write_all_chats'] = args.action.startswith('grant-')
         else:
             if args.chat_id >= 0:
                 parser.error('Poll group/channel targets require a negative numeric chat ID')
@@ -230,6 +236,7 @@ def main():
             'all_contacts': row.get('all_contacts', False), 'contact_count': len(row.get('contact_ids', [])),
             'send_saved_text': SAVED_TEXT_ACTION in row.get('actions', []),
             'poll_write_saved': row.get('poll_write_saved', False),
+            'poll_write_all_chats': row.get('poll_write_all_chats', False),
             'poll_write_chat_count': len(row.get('poll_write_chat_ids', [])),
             'optional_actions': sorted(set(row.get('actions', [])) & OPTIONAL_ACTIONS)}
             for name, row in data['agents'].items()}))
@@ -284,7 +291,8 @@ def main():
             'all_chats': args.all_chats, 'chat_ids': sorted(set(args.chat_id)),
             'all_contacts': args.all_contacts, 'contact_ids': sorted(set(args.contact_id)),
             'include_phones': args.include_phones,
-            'poll_write_saved': args.poll_saved, 'poll_write_chat_ids': sorted(set(args.poll_chat_id)),
+            'poll_write_saved': args.poll_saved, 'poll_write_all_chats': args.poll_all_chats,
+            'poll_write_chat_ids': sorted(set(args.poll_chat_id)),
             'actions': sorted(READ_ACTIONS | ({SAVED_TEXT_ACTION} if args.send_saved_text else set()) |
                               {name for name in OPTIONAL_ACTIONS if getattr(args, name.replace('-', '_'), False)})}
         registry.save(data)

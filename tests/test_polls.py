@@ -28,11 +28,12 @@ from telegram_setup.gateway import create_gateway
 from telegram_setup.permissions import save_settings
 
 
-def row(actions=(), *, saved=False, targets=(), all_chats=True, chat_ids=()):
+def row(actions=(), *, saved=False, targets=(), all_chats=True, chat_ids=(), poll_all=False):
     return {'enabled': True, 'token_sha256': hashlib.sha256(b'synthetic-token').hexdigest(),
             'expires_at':int(time.time())+3600,'actions':sorted(READ_ACTIONS|set(actions)),
             'all_chats':all_chats,'chat_ids':list(chat_ids),'all_contacts':False,'contact_ids':[],
-            'include_phones':False,'poll_write_saved':saved,'poll_write_chat_ids':list(targets)}
+            'include_phones':False,'poll_write_saved':saved,'poll_write_all_chats':poll_all,
+            'poll_write_chat_ids':list(targets)}
 
 
 class CommonTests(unittest.TestCase):
@@ -60,14 +61,25 @@ class PollRegistryTests(unittest.TestCase):
             self.assertIn('create-polls',registry.profile('a')['actions'])
             self.assertTrue(registry.profile('a')['poll_write_saved'])
             self.assertNotIn('create-polls',registry.profile('b')['actions'])
+            self.assertFalse(registry.profile('a')['poll_write_all_chats'])
+            call('grant-poll-all-chats','a');self.assertTrue(registry.profile('a')['poll_write_all_chats'])
             bad=call('grant-poll-chat','a','--chat-id','123',check=False);self.assertNotEqual(bad.returncode,0)
             call('grant-poll-chat','a','--chat-id','-100123')
             self.assertEqual(registry.profile('a')['poll_write_chat_ids'],[-100123])
             call('revoke-poll-saved','a');call('revoke-poll-chat','a','--chat-id','-100123')
+            call('revoke-poll-all-chats','a')
             call('revoke-poll-create','a')
             actual=registry.profile('a')
-            self.assertFalse(actual['poll_write_saved']);self.assertEqual(actual['poll_write_chat_ids'],[])
+            self.assertFalse(actual['poll_write_saved']);self.assertFalse(actual['poll_write_all_chats'])
+            self.assertEqual(actual['poll_write_chat_ids'],[])
             self.assertNotIn('create-polls',actual['actions']);self.assertIn('send-saved-text',actual['actions'])
+
+    def test_malformed_all_chats_write_flag_fails_closed(self):
+        with tempfile.TemporaryDirectory() as home:
+            registry=AgentRegistry(Path(home)/'agents.json');bad=row({'create-polls'})
+            bad['poll_write_all_chats']='true'
+            registry.save({'schema_version':1,'agents':{'a':bad}})
+            with self.assertRaises(AccessDenied):registry.load()
 
 
 class FakeBackend:
@@ -136,6 +148,25 @@ class GatewayPollTests(unittest.IsolatedAsyncioTestCase):
         self.data['agents']['a']['poll_write_chat_ids']=[-100123];self.registry.save(self.data)
         r=await self.polls.create('a',-100123,'Q',['A','B'],'poll-allowed-1')
         self.assertEqual(r['status'],'delivered_verified')
+
+    async def test_explicit_poll_all_grant_is_separate_and_revocable(self):
+        self.data['agents']['a']['poll_write_saved']=False
+        self.data['agents']['a']['poll_write_all_chats']=True;self.registry.save(self.data)
+        targets=await self.polls.destinations('a')
+        self.assertTrue(targets['all_readable_chats']);self.assertEqual(targets['saved_chat_id'],1001)
+        for chat,request in ((1001,'poll-all-saved-1'),(-100123,'poll-all-group-1'),(7777,'poll-all-bot-01')):
+            r=await self.polls.create('a',chat,'Q',['A','B'],request)
+            self.assertEqual(r['status'],'delivered_verified')
+        self.data['agents']['a']['poll_write_all_chats']=False;self.registry.save(self.data)
+        with self.assertRaises(AccessDenied):
+            await self.polls.create('a',-100123,'Q',['A','B'],'poll-all-revoked')
+
+    async def test_poll_all_does_not_bypass_restricted_history_scope(self):
+        self.data['agents']['a'].update(all_chats=False,chat_ids=[-100123],poll_write_all_chats=True)
+        self.registry.save(self.data)
+        with self.assertRaises(AccessDenied):
+            await self.polls.create('a',-100999,'Q',['A','B'],'poll-unreadable')
+        self.assertEqual(self.backend.sent,0)
 
     async def test_read_existing_without_any_write_grant(self):
         self.backend.polls[(-100123,55)]={'chat_id':-100123,'message_id':55,'poll_id':'6','question':'Existing',
@@ -275,6 +306,15 @@ class BackendPollTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result,{'error':'public_votes_not_allowed_in_channel','sent':False})
         self.assertEqual(self.sent,0)
 
+    async def test_regular_private_peer_rejected_but_bot_peer_is_supported(self):
+        self.entity=tg.User(id=222,first_name='Synthetic')
+        args=dict(chat_id=222,question='Q',options=['A','B'],agent_id='agent')
+        result=await self.tools['agent_create_poll'](**args,request_id='private-person-1')
+        self.assertEqual(result,{'error':'poll_private_peer_not_supported','sent':False});self.assertEqual(self.sent,0)
+        self.entity=tg.User(id=222,first_name='Synthetic bot',bot=True,bot_info_version=1)
+        result=await self.tools['agent_create_poll'](**args,request_id='private-bot-0001')
+        self.assertEqual(result['status'],'delivered_verified');self.assertEqual(self.sent,1)
+
     async def test_result_refresh_reports_aggregate_without_voter_ids(self):
         await self.tools['agent_create_poll'](chat_id=1001,question='Q',options=['A','B'],
             request_id='backend-results-1',agent_id='agent')
@@ -326,6 +366,18 @@ class PollMCPTests(unittest.IsolatedAsyncioTestCase):
                     self.assertFalse(result.isError);self.assertEqual(text_payload(result)['message_id'],42)
                     result=await session.call_tool('close_own_poll',{'chat_id':1001,'message_id':42,'request_id':'poll-close-std1'})
                     self.assertFalse(result.isError);self.assertEqual(text_payload(result)['status'],'closed_verified')
+
+    async def test_status_reports_saved_in_explicit_all_chat_scope(self):
+        self.data['agents']['a'].update(poll_write_saved=False,poll_write_all_chats=True)
+        self.registry.save(self.data)
+        script=Path(__file__).with_name('offline_polls.py')
+        params=StdioServerParameters(command=sys.executable,args=[str(script),str(self.registry.path),str(self.root/'receipts')])
+        with open(os.devnull,'w') as err:
+            async with stdio_client(params,errlog=err) as (reader,writer):
+                async with ClientSession(reader,writer) as session:
+                    await session.initialize();status=text_payload(await session.call_tool('telegram_status',{}))
+                    self.assertTrue(status['poll_write_all_chats']);self.assertTrue(status['poll_saved_target'])
+                    self.assertFalse(status['poll_saved_explicit'])
 
     async def test_real_stdio_backend_capabilities_are_separate_and_default_off(self):
         script=Path(__file__).with_name('offline_server.py')

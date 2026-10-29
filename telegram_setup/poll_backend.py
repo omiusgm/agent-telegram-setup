@@ -127,6 +127,8 @@ def register_poll_backend(runtime):
             return {'error':'poll_target_not_available','sent':False}
         old = receipts.existing(agent_id, request_id, digest)
         if old is not None: return {k:v for k,v in old.items() if k != 'fingerprint'}
+        if isinstance(entity, types.User) and entity.id != owner_id and not getattr(entity, 'bot', False):
+            return {'error': 'poll_private_peer_not_supported', 'sent': False}
         if isinstance(entity, types.Channel) and entity.broadcast and not anonymous:
             return {'error': 'public_votes_not_allowed_in_channel', 'sent': False}
         path, old = receipts.begin(agent_id, request_id, digest, chat_id, 'create')
