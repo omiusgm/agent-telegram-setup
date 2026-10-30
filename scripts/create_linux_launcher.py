@@ -1,7 +1,9 @@
 """Prepare a clickable Linux launcher; no Terminal is used by the owner."""
 import argparse
+import os
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,9 +20,16 @@ def main():
     if target.exists() or target.is_symlink() or target.suffix != '.desktop':
         parser.error('Choose a new .desktop destination')
     python = ROOT / '.venv/bin/python'
-    executable = str(python) if python.is_file() else shutil.which('python3')
+    executable = str(python) if python.is_file() and os.access(python, os.X_OK) else shutil.which('python3')
     if not executable:
         parser.error('Prepare Python first')
+    try:
+        check = subprocess.run([executable, '-c', 'import sys; sys.exit(sys.version_info < (3, 11))'],
+                               stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+        if check.returncode:
+            parser.error('Prepare Python 3.11 or newer before creating the launcher')
+    except (OSError, subprocess.TimeoutExpired):
+        parser.error('Could not check Python; prepare Python 3.11 or newer')
     # Desktop Entry quoting differs from a shell; reject rather than interpolate
     # expansion/control characters into a command or the desktop file.
     if any(any(c in value for c in '\n\r\t%"`$\\') for value in (executable, str(ROOT))):

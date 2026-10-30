@@ -1,8 +1,10 @@
 """Browser setup: loopback/CSRF boundaries and real private pipe lifecycle."""
 import asyncio
 import base64
+import contextlib
 from datetime import datetime, timedelta, timezone
 import http.client
+import io
 import json
 import os
 from pathlib import Path
@@ -10,6 +12,7 @@ import tempfile
 import threading
 import time
 import unittest
+import sys
 from unittest.mock import AsyncMock, patch
 
 from telethon import errors
@@ -129,6 +132,81 @@ class BrowserBoundaryTests(unittest.TestCase):
                                                        'transcription_engine': None}, origin=self.server.origin)
         self.assertEqual(code, 409)
         self.assertFalse(self.controller.busy)
+
+
+class BrowserStartupTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.home = Path(self.temporary.name) / 'private'
+        self.env = patch.dict(os.environ, {'AGENT_TELEGRAM_HOME': str(self.home)})
+        self.env.start()
+
+    def tearDown(self):
+        self.env.stop(); self.temporary.cleanup()
+
+    def test_browser_failure_stops_cleanly_without_printing_handoff_or_token(self):
+        handoff = self.home / 'handoff.json'
+        created = []
+        original = web_setup.SetupHTTPServer
+        def server(*args, **kwargs):
+            result = original(*args, **kwargs); created.append(result); return result
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with patch.object(sys, 'argv', ['setup_web.py', '--connection-file', str(handoff)]), \
+             patch.object(original, 'serve_forever') as serve, \
+             patch.object(web_setup, 'SetupHTTPServer', side_effect=server), \
+             patch.object(web_setup.webbrowser, 'open', return_value=False) as browser, \
+             contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            self.assertEqual(web_setup.main(), 1)
+        serve.assert_not_called(); browser.assert_called_once()
+        self.assertFalse(handoff.exists()); self.assertEqual(created[0].socket.fileno(), -1)
+        self.assertIn('Could not open a local browser', stderr.getvalue())
+        self.assertNotIn(created[0].token, stdout.getvalue() + stderr.getvalue())
+
+    def test_browser_exception_is_redacted_and_does_not_leave_handoff(self):
+        handoff = self.home / 'handoff.json'
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with patch.object(sys, 'argv', ['setup_web.py', '--connection-file', str(handoff)]), \
+             patch.object(web_setup.webbrowser, 'open', side_effect=RuntimeError('synthetic-secret')), \
+             contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            self.assertEqual(web_setup.main(), 1)
+        self.assertFalse(handoff.exists())
+        self.assertNotIn('synthetic-secret', stdout.getvalue() + stderr.getvalue())
+
+    def test_existing_handoff_is_never_deleted_when_creation_fails(self):
+        self.home.mkdir(mode=0o700)
+        handoff = self.home / 'handoff.json'; handoff.write_text('existing owner file')
+        with patch.object(sys, 'argv', ['setup_web.py', '--connection-file', str(handoff)]), \
+             patch.object(web_setup.webbrowser, 'open') as browser:
+            with self.assertRaises(FileExistsError): web_setup.main()
+        browser.assert_not_called(); self.assertEqual(handoff.read_text(), 'existing owner file')
+
+    def test_headless_mode_does_not_open_browser_and_cleans_handoff(self):
+        handoff = self.home / 'handoff.json'; stdout = io.StringIO()
+        with patch.object(sys, 'argv', ['setup_web.py', '--no-open', '--connection-file', str(handoff)]), \
+             patch.object(web_setup.SetupHTTPServer, 'serve_forever') as serve, \
+             patch.object(web_setup.webbrowser, 'open') as browser, contextlib.redirect_stdout(stdout):
+            self.assertEqual(web_setup.main(), 0)
+        serve.assert_called_once(); browser.assert_not_called(); self.assertFalse(handoff.exists())
+        self.assertNotIn('#setup=', stdout.getvalue())
+
+    def test_headless_mode_requires_a_private_handoff_before_opening_a_server(self):
+        stderr = io.StringIO()
+        with patch.object(sys, 'argv', ['setup_web.py', '--no-open']), \
+             patch.object(web_setup, 'SetupHTTPServer') as server, contextlib.redirect_stderr(stderr):
+            with self.assertRaises(SystemExit): web_setup.main()
+        server.assert_not_called()
+        self.assertIn('--connection-file', stderr.getvalue())
+        self.assertFalse(self.home.exists())
+
+    def test_replaced_handoff_is_not_removed_when_the_wizard_closes(self):
+        handoff = self.home / 'handoff.json'
+        def replace(_server, **_kwargs):
+            handoff.unlink(); handoff.write_text('replacement owner file')
+        with patch.object(sys, 'argv', ['setup_web.py', '--no-open', '--connection-file', str(handoff)]), \
+             patch.object(web_setup.SetupHTTPServer, 'serve_forever', new=replace), \
+             contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(web_setup.main(), 0)
+        self.assertEqual(handoff.read_text(), 'replacement owner file')
 
 
 class LoginWorkerTests(unittest.IsolatedAsyncioTestCase):

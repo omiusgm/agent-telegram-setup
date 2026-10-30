@@ -318,33 +318,64 @@ def main():
     args = parser.parse_args()
     if args.port != 0 and not 1024 <= args.port <= 65535:
         parser.error('Use an unprivileged loopback port or 0')
+    if args.no_open and not args.connection_file:
+        parser.error('--no-open requires --connection-file for the private owner handoff')
     prepare_private()
     controller = SetupController(reader_only=args.reader_only)
     server = SetupHTTPServer(controller, args.port)
     url = server.origin + '/#setup=' + server.token
     handoff = None
-    if args.connection_file:
-        handoff = Path(args.connection_file).expanduser().absolute()
-        if handoff.parent.resolve() != private_dir() or handoff.is_symlink():
-            parser.error('--connection-file must be a new file in the private installation directory')
-        fd = os.open(handoff, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
-        with os.fdopen(fd, 'w') as stream:
-            json.dump({'url': url, 'expires_after_seconds': 1800}, stream)
-    # This one-time URL is shown only in the owner's browser; never print it.
-    if not args.no_open:
-        webbrowser.open(url)
-    print('Local Telegram setup is ready on port ' + str(server.server_port) + '. No secrets are logged.', flush=True)
-    timer = threading.Timer(1800, server.shutdown)
-    timer.daemon = True
-    timer.start()
+    handoff_fd = None
+    timer = None
     try:
+        if args.connection_file:
+            candidate = Path(args.connection_file).expanduser().absolute()
+            if candidate.parent.resolve() != private_dir() or candidate.is_symlink():
+                parser.error('--connection-file must be a new file in the private installation directory')
+            fd = os.open(candidate, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW |
+                         getattr(os, 'O_CLOEXEC', 0), 0o600)
+            # Only remove a handoff created by this invocation; an existing
+            # file must survive validation or O_EXCL failures unchanged. Keep
+            # the descriptor open so a removed inode cannot be reused while
+            # the wizard is running.
+            handoff, handoff_fd = candidate, fd
+            data = json.dumps({'url': url, 'expires_after_seconds': 1800}).encode()
+            while data:
+                count = os.write(handoff_fd, data)
+                if count <= 0:
+                    raise OSError('handoff_write_failed')
+                data = data[count:]
+            os.fsync(handoff_fd)
+        # This one-time URL is shown only in the owner's browser; never print it.
+        if not args.no_open:
+            try:
+                opened = webbrowser.open(url)
+            except Exception:
+                opened = False
+            if not opened:
+                print('Could not open a local browser. Start the setup again after checking the browser.',
+                      file=sys.stderr)
+                return 1
+        print('Local Telegram setup is ready on port ' + str(server.server_port) + '. No secrets are logged.', flush=True)
+        timer = threading.Timer(1800, server.shutdown)
+        timer.daemon = True
+        timer.start()
         server.serve_forever(poll_interval=.2)
     except KeyboardInterrupt:
         pass
     finally:
-        timer.cancel()
+        if timer is not None:
+            timer.cancel()
         controller.close()
         server.server_close()
-        if handoff is not None:
-            handoff.unlink(missing_ok=True)
+        if handoff_fd is not None:
+            try:
+                current = handoff.lstat()
+                original = os.fstat(handoff_fd)
+                if (current.st_dev, current.st_ino) == (original.st_dev, original.st_ino):
+                    handoff.unlink()
+            except FileNotFoundError:
+                pass
+            finally:
+                os.close(handoff_fd)
     return 0

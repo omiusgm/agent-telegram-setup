@@ -3,6 +3,7 @@
 import re
 import json
 import struct
+import subprocess
 import xml.etree.ElementTree as ET
 import zlib
 from pathlib import Path
@@ -75,6 +76,31 @@ PUBLIC_FILES = (
     'telegram_setup/requested_sources.py',
     'tests/test_requested_sources.py',
     'docs/requested-sources.md',
+    # Polls, BotFather guard and opt-in bot administration were published
+    # after the original list; they must be checked as well.
+    'docs/polls.md', 'docs/botfather-output-guard.md', 'docs/owned-bots.md',
+    'telegram_setup/poll_backend.py', 'telegram_setup/poll_common.py',
+    'telegram_setup/poll_gateway.py', 'telegram_setup/poll_receipts.py',
+    'telegram_setup/sensitive_peer.py', 'telegram_setup/newbot_approval.py',
+    'telegram_setup/newbot_backend.py', 'telegram_setup/newbot_gateway.py',
+    'telegram_setup/newbot_protocol.py', 'telegram_setup/newbot_store.py',
+    'telegram_setup/newbot_token_files.py', 'telegram_setup/newbot_worker.py',
+    'telegram_setup/owned_bot_gateway.py', 'telegram_setup/owned_bots.py',
+    'telegram_setup/owner_bot_notification_backend.py',
+    'telegram_setup/owner_bot_notification_gateway.py', 'telegram_setup/owner_bot_notifications.py',
+    'tests/offline_newbot_gateway.py', 'tests/offline_owned_bots.py',
+    'tests/offline_owner_bot_gateway.py', 'tests/offline_polls.py', 'tests/offline_sensitive_gateway.py',
+    'tests/test_newbot_barrier.py', 'tests/test_newbot_integration.py', 'tests/test_newbot_protocol.py',
+    'tests/test_newbot_store.py', 'tests/test_newbot_token_files.py', 'tests/test_newbot_worker.py',
+    'tests/test_owned_bot_all_scope.py', 'tests/test_owned_bots.py',
+    'tests/test_owner_bot_notifications.py', 'tests/test_polls.py', 'tests/test_sensitive_peer.py',
+    # Onboarding guide and synthetic screenshots; PNGs contain image chunks only.
+    'docs/start-here.md', 'docs/remote-owner-setup.md',
+    'docs/assets/start-here/01-capabilities.png', 'docs/assets/start-here/02-login.png',
+    'docs/assets/start-here/03-check.png', 'scripts/save_tunnel_key.py',
+    'scripts/fake_setup_preview.py', 'scripts/capture_setup_guide.cjs',
+    'tests/test_save_tunnel_key.py', 'tests/test_macos_launcher.py', 'tests/test_fake_setup_preview.py',
+    'tests/test_public_guide.py', 'tests/test_linux_launcher.py',
     'CONTRIBUTING.md',
     'SECURITY.md',
     'CODE_OF_CONDUCT.md',
@@ -160,6 +186,17 @@ def check_guide_index():
                 raise ValueError('guide anchor missing')
 
 
+def unreviewed_tracked_files():
+    """Flag newly tracked files without reading any unlisted file contents."""
+    marker = ROOT / '.git'
+    if not marker.exists() and not marker.is_symlink():
+        return []  # Exported archives have no Git index to inspect.
+    result = subprocess.run(['git', 'ls-files', '-z'], cwd=ROOT, check=True,
+                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=10)
+    names = [part.decode('utf-8', 'surrogateescape') for part in result.stdout.split(b'\0') if part]
+    return sorted(set(names) - set(PUBLIC_FILES))
+
+
 def main():
     failures = []
     for relative in PUBLIC_FILES:
@@ -191,6 +228,12 @@ def main():
         check_guide_index()
     except (OSError, ValueError, KeyError):
         failures.append('docs/dot-guide-steps.json: invalid step/image/link mapping')
+    try:
+        missing = unreviewed_tracked_files()
+        if missing:
+            failures.append(f'{len(missing)} tracked file(s) outside the explicit public set; contents were not read')
+    except (OSError, subprocess.SubprocessError):
+        failures.append('Could not verify the tracked public file list')
     if failures:
         raise SystemExit("\n".join(failures))
     print(f"Public check passed: {len(PUBLIC_FILES)} explicit files, no flagged values or broken local links")

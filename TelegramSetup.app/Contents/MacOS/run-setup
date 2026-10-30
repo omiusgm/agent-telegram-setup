@@ -10,4 +10,12 @@ else
   /usr/bin/osascript -e 'display alert "Нужен Python" message "Попросите устанавливающего агента подготовить Python 3.11 или новее. Вход в Telegram затем пройдёт в браузере."'
   exit 1
 fi
-"$setup_python" "$project_root/setup_web.py" --open >/dev/null 2>&1 &
+if ! "$setup_python" -c 'import sys; sys.exit(sys.version_info < (3, 11))' >/dev/null 2>&1; then
+  /usr/bin/osascript -e 'display alert "Нужен Python 3.11 или новее" message "Попросите устанавливающего агента проверить Python, затем откройте мастер снова."' || true
+  exit 1
+fi
+(
+  if ! "$setup_python" "$project_root/setup_web.py" --open >/dev/null 2>&1; then
+    /usr/bin/osascript -e 'display alert "Мастер Telegram не открылся" message "Попросите устанавливающего агента проверить Python и браузер, затем запустите мастер снова. Сессия Telegram не удалялась."' || true
+  fi
+) &
