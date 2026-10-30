@@ -48,7 +48,7 @@ def prepare():
     register_requested_source(runtime)
     register_poll_backend(runtime)
     register_owned_bots(runtime)
-    register_newbot_backend(runtime)
+    register_newbot_backend(runtime, creation_enabled='agent-bot-create' in settings['enabled'])
     register_owner_bot_notifications(runtime)
     voice_services = None
     if native_telegram_transcription_enabled():

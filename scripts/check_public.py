@@ -90,7 +90,7 @@ PUBLIC_FILES = (
     'telegram_setup/owner_bot_notification_gateway.py', 'telegram_setup/owner_bot_notifications.py',
     'tests/offline_newbot_gateway.py', 'tests/offline_owned_bots.py',
     'tests/offline_owner_bot_gateway.py', 'tests/offline_polls.py', 'tests/offline_sensitive_gateway.py',
-    'tests/test_newbot_barrier.py', 'tests/test_newbot_integration.py', 'tests/test_newbot_protocol.py',
+    'tests/test_newbot_barrier.py', 'tests/test_newbot_integration.py', 'tests/test_newbot_preflight.py', 'tests/test_newbot_protocol.py',
     'tests/test_newbot_store.py', 'tests/test_newbot_token_files.py', 'tests/test_newbot_worker.py',
     'tests/test_owned_bot_all_scope.py', 'tests/test_owned_bots.py',
     'tests/test_owner_bot_notifications.py', 'tests/test_polls.py', 'tests/test_sensitive_peer.py',

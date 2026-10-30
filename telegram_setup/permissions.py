@@ -54,7 +54,7 @@ CAPABILITIES = {
     "agent-bot-edit": ("Изменение профилей своих ботов", "Отдельные ID или явно разрешённые все свои боты; без токена и изменения настроек.",
                        ("agent_update_owned_bot_profile",)),
     "agent-bot-create": ("Создание ботов", "Отдельное право агента; режим оператора по умолчанию или явно выбранное делегирование.",
-                         ("agent_request_owned_bot",)),
+                         ("agent_request_owned_bot", "agent_newbot_preflight")),
     "agent-bot-notify": ("Уведомления владельцу от выбранного бота", "Только личный чат владельца и отдельно разрешённый бот, без входящих команд.",
                          ("agent_notify_owner_via_bot",)),
 }
@@ -135,7 +135,8 @@ def exposed_tools(data):
                       "agent-profiles": CAPABILITIES["agent-profiles"][2],
                       "agent-attachments": CAPABILITIES["agent-attachments"][2],
                       "agent-poll-read": CAPABILITIES["agent-poll-read"][2],
-                      "agent-bot-read": CAPABILITIES["agent-bot-read"][2]}
+                      "agent-bot-read": CAPABILITIES["agent-bot-read"][2],
+                      "agent-bot-create": ("agent_newbot_preflight",)}
     excluded = {tool for name, tools in optional_reads.items() if name not in enabled for tool in tools}
     return "read-only" + ("+" + ",".join(sorted(extras)) if extras else "") + ("-" + ",".join(sorted(excluded)) if excluded else "")
 

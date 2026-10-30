@@ -4,6 +4,7 @@ The bot token remains on this host; no getUpdates/webhook/daemon is used.
 This component is opt-in and not evidence of a delivered live message.
 """
 import asyncio
+from datetime import datetime, timezone
 import http.client
 import json
 from pathlib import Path
@@ -21,6 +22,9 @@ from .private_state import read_private, secure_directory
 from .sensitive_peer import redact_tokens
 
 _RECEIPT_NAME = re.compile(r'[0-9a-f]{64}\.json\Z')
+_HISTORY_LIMIT = 50
+_HISTORY_ATTEMPTS = 8
+_HISTORY_PAUSE = 0.6
 
 
 def token_ref_for_verified_bot(folder, bot_id):
@@ -61,9 +65,11 @@ def bot_api_send(token, owner_id, bot_id, text):
         if isinstance(value, dict) and value.get('ok') is True and response.status == 200:
             message = value.get('result', {})
             if (isinstance(message, dict) and type(message.get('message_id')) is int
-                    and message['message_id'] > 0 and message.get('chat', {}).get('id') == owner_id
+                    and message['message_id'] > 0 and type(message.get('date')) is int and message['date'] > 0
+                    and message.get('chat', {}).get('id') == owner_id
                     and message.get('from', {}).get('id') == bot_id and message.get('text') == text):
-                return {'status': 'accepted_by_telegram', 'message_id': message['message_id']}
+                return {'status': 'accepted_by_telegram', 'bot_message_id': message['message_id'],
+                        'bot_date_unix': message['date']}
         if (isinstance(value, dict) and value.get('ok') is False
                 and response.status in (400, 403, 429) and value.get('error_code') == response.status):
             safe = {'status': 'rejected_not_sent', 'error_code': response.status}
@@ -77,6 +83,54 @@ def bot_api_send(token, owner_id, bot_id, text):
             try: connection.close()
             except Exception: pass
     return {'status': 'uncertain_do_not_retry'}
+
+
+def _message_epoch(message):
+    value = getattr(message, 'date', None)
+    if not isinstance(value, datetime): return None
+    if value.tzinfo is None: value = value.replace(tzinfo=timezone.utc)
+    try: return int(value.timestamp())
+    except (OverflowError, OSError, ValueError): return None
+
+
+async def owner_baseline(client, bot, bot_id):
+    """Snapshot the owner's own message namespace before Bot API dispatch."""
+    rows = await asyncio.wait_for(client.get_messages(bot, limit=1), 5)
+    if not isinstance(rows, (list, tuple)) or len(rows) > 1:
+        raise ValueError('owner_snapshot_unavailable')
+    if not rows: return 0
+    message = rows[0]
+    ident = getattr(message, 'id', None)
+    if type(ident) is not int or ident <= 0 or getattr(message, 'chat_id', None) != bot_id:
+        raise ValueError('owner_snapshot_unavailable')
+    return ident
+
+
+async def correlate_owner_message(client, bot, bot_id, text, baseline, bot_date_unix):
+    """Find one stable peer/sender/text/date match after the owner baseline.
+
+    Bot API and personal MTProto message IDs belong to different accounts.
+    A bounded or ambiguous result is unconfirmed; never resend to resolve it.
+    """
+    previous = None
+    for attempt in range(_HISTORY_ATTEMPTS):
+        rows = await asyncio.wait_for(client.get_messages(bot, limit=_HISTORY_LIMIT + 1, min_id=baseline), 5)
+        if not isinstance(rows, (list, tuple)) or len(rows) > _HISTORY_LIMIT: return None
+        matches = []
+        for message in rows:
+            ident = getattr(message, 'id', None)
+            if (type(ident) is not int or ident <= baseline or getattr(message, 'chat_id', None) != bot_id):
+                return None
+            if (getattr(message, 'sender_id', None) == bot_id and getattr(message, 'out', None) is False
+                    and getattr(message, 'raw_text', None) == text and _message_epoch(message) == bot_date_unix):
+                matches.append(ident)
+        if len(matches) > 1: return None
+        current = matches[0] if matches else None
+        if previous is not None and current != previous: return None
+        if current is not None and current == previous: return current
+        previous = current
+        if attempt + 1 < _HISTORY_ATTEMPTS: await asyncio.sleep(_HISTORY_PAUSE)
+    return None
 
 
 class OwnerBotNotifier:
@@ -108,6 +162,10 @@ class OwnerBotNotifier:
             ref = token_ref_for_verified_bot(self.folder / 'newbot-claims', bot_id)
             if self.vault.metadata(ref)['token_bot_id'] != bot_id: raise AccessDenied('bot_token_identity_mismatch')
             self.policy(agent, bot_id)
+            # No Bot API request is dispatched unless the exact owner↔bot
+            # dialog can first be snapshotted in the owner's ID namespace.
+            baseline = await owner_baseline(self.client, bot, bot_id)
+            self.policy(agent, bot_id)
             path, previous = self.receipts.begin(agent, request_id, digest, bot_id, 'bot-owner-notify')
             if previous is not None: return {k: v for k, v in previous.items() if k != 'fingerprint'}
             receipt = {'request_id': request_id, 'bot_id': bot_id, 'operation': 'bot-owner-notify',
@@ -123,14 +181,17 @@ class OwnerBotNotifier:
                     if type(result.get('retry_after_seconds')) is int:
                         receipt['retry_after_seconds'] = result['retry_after_seconds']
                 elif (isinstance(result, dict) and result.get('status') == 'accepted_by_telegram'
-                        and type(result.get('message_id')) is int and result['message_id'] > 0):
-                    receipt.update(status='accepted_unconfirmed', message_id=result['message_id'])
+                        and type(result.get('bot_message_id')) is int and result['bot_message_id'] > 0
+                        and type(result.get('bot_date_unix')) is int and result['bot_date_unix'] > 0):
+                    receipt.update(status='accepted_unconfirmed', bot_message_id=result['bot_message_id'])
                     self.policy(agent, bot_id)
-                    message = await asyncio.wait_for(self.client.get_messages(bot, ids=result['message_id']), 10)
-                    if (getattr(message, 'id', None) == result['message_id'] and getattr(message, 'chat_id', None) == bot_id
-                            and getattr(message, 'sender_id', None) == bot_id and getattr(message, 'out', None) is False
-                            and getattr(message, 'raw_text', None) == text):
-                        receipt.update(status='delivered_verified', readback_verified=True)
+                    owner_message_id = await asyncio.wait_for(
+                        correlate_owner_message(self.client, bot, bot_id, text, baseline, result['bot_date_unix']), 8)
+                    self.policy(agent, bot_id)
+                    if owner_message_id is not None:
+                        receipt.update(status='delivered_verified', readback_verified=True,
+                                       message_id=owner_message_id, owner_message_id=owner_message_id,
+                                       readback_method='stable_owner_peer_sender_text_date_after_baseline')
             except Exception:
                 # No raw HTTP/SDK errors or credentials in logs/receipts.
                 pass

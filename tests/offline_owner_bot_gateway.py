@@ -19,13 +19,16 @@ from telegram_setup.agents import AgentRegistry
 from telegram_setup.gateway import create_gateway
 import telegram_setup.owner_bot_notification_backend as backend_module
 from telegram_setup.owner_bot_notifications import OwnerBotNotifier
-from test_owner_bot_notifications import Client
+from test_owner_bot_notifications import Client, BOT_MESSAGE_ID, BOT_DATE
+import telegram_setup.owner_bot_notifications as notifications_module
+notifications_module._HISTORY_PAUSE=0
 
 root, registry_path = Path(sys.argv[1]), Path(sys.argv[2])
 client = Client(); backend = FastMCP('synthetic backend')
 backend_module.private_dir = lambda: root
 backend_module.OwnerBotNotifier = lambda client, registry, folder: OwnerBotNotifier(
-    client, registry, folder, transport=lambda *_: {'status': 'accepted_by_telegram', 'message_id': 55})
+    client, registry, folder, transport=lambda *_: {'status':'accepted_by_telegram',
+        'bot_message_id':BOT_MESSAGE_ID,'bot_date_unix':BOT_DATE})
 runtime = SimpleNamespace(mcp=backend, ToolAnnotations=ToolAnnotations,
                           with_account=lambda **_: lambda fn: fn, get_client=lambda _: client)
 backend_module.register_owner_bot_notifications(runtime)

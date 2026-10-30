@@ -41,11 +41,16 @@ class OwnerBotNotificationGateway:
                                             'rejected_not_sent', 'uncertain_do_not_retry'):
                 return {'request_id': request_id, 'bot_id': bot_id, 'status': 'uncertain_do_not_retry',
                         'readback_verified': False}
-            if result['status'] == 'delivered_verified' and result.get('readback_verified') is not True:
-                return {'request_id': request_id, 'bot_id': bot_id, 'status': 'uncertain_do_not_retry',
-                        'readback_verified': False}
+            if result['status'] == 'delivered_verified':
+                owner_id = result.get('owner_message_id'); bot_msg_id = result.get('bot_message_id')
+                if (result.get('readback_verified') is not True or type(owner_id) is not int or owner_id <= 0
+                        or result.get('message_id') != owner_id or type(bot_msg_id) is not int or bot_msg_id <= 0
+                        or result.get('readback_method') != 'stable_owner_peer_sender_text_date_after_baseline'):
+                    return {'request_id': request_id, 'bot_id': bot_id, 'status': 'uncertain_do_not_retry',
+                            'readback_verified': False}
             return {k: result[k] for k in ('request_id', 'bot_id', 'operation', 'status', 'readback_verified',
-                                           'message_id', 'error_code', 'retry_after_seconds', 'original_request_id') if k in result}
+                                           'message_id', 'owner_message_id', 'bot_message_id', 'readback_method',
+                                           'error_code', 'retry_after_seconds', 'original_request_id') if k in result}
 
 
 def register_owner_bot_notification_gateway(mcp, service):
