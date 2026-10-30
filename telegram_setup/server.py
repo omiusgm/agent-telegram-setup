@@ -37,6 +37,7 @@ def prepare():
     from .owned_bots import register_owned_bots
     from .newbot_backend import register_newbot_backend
     from .owner_bot_notification_backend import register_owner_bot_notifications
+    from .permissions import native_telegram_transcription_enabled
     register_history_page(runtime)
     register_dialog_page(runtime)
     register_owned_inventory(runtime)
@@ -49,6 +50,10 @@ def prepare():
     register_owned_bots(runtime)
     register_newbot_backend(runtime)
     register_owner_bot_notifications(runtime)
+    voice_services = None
+    if native_telegram_transcription_enabled():
+        from .native_transcription import register_native_transcription
+        voice_services = register_native_transcription(runtime, runner.clients, data['user_id'])
     enforce_transcription_engine(runner.mcp, settings)
     enforce_permission_snapshot(runner.mcp, settings)
     runner._telegram_setup_permissions = settings
@@ -62,6 +67,8 @@ def prepare():
                 me = await client.get_me()
                 if me.bot or me.id != data["user_id"]:
                     raise RuntimeError("Аккаунт не совпадает с сохранённым владельцем.")
+                if voice_services is not None:
+                    await voice_services[id(client)].activate(me.id)
             # No full-dialog cache warmer: read only on an explicit MCP call.
             await runner._serve("stdio")
         finally:

@@ -21,6 +21,7 @@ from mcp.types import ToolAnnotations
 home = os.environ.get('AGENT_TELEGRAM_HOME', '')
 assert home and (Path(home) / 'synthetic-installation').is_file()
 assert os.environ.get('AGENT_TELEGRAM_MANAGED_BACKEND') == '1'
+assert os.environ.get('AGENT_TELEGRAM_NATIVE_TRANSCRIPTION') == '1'
 assert os.environ.get('AGENT_TELEGRAM_SOCKS_HOST') == '127.0.0.1'
 assert 'TELEGRAM_STRING_SESSION' not in os.environ
 assert 'TELEGRAM_API_HASH' not in os.environ
@@ -51,6 +52,7 @@ class EnvironmentTests(unittest.IsolatedAsyncioTestCase):
             (root / 'server.py').write_text(FIXTURE_SERVER)
             selected = {'AGENT_TELEGRAM_HOME': str(home),
                         'AGENT_TELEGRAM_MANAGED_BACKEND': '1',
+                        'AGENT_TELEGRAM_NATIVE_TRANSCRIPTION': '1',
                         'AGENT_TELEGRAM_SOCKS_HOST': '127.0.0.1',
                         'TELEGRAM_STRING_SESSION': 'synthetic-must-not-inherit',
                         'TELEGRAM_API_HASH': 'synthetic-must-not-inherit'}

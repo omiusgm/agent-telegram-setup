@@ -19,9 +19,16 @@ MAX_LINE_BYTES = 4 * 1024**2
 def should_keep_alive(settings):
     """An explicit permission change permits idle shutdown and a clean restart."""
     from .owned_inventory import has_pending_inventory
-    from .permissions import load_settings
+    from .permissions import load_settings, native_telegram_transcription_enabled
     try:
-        return load_settings() == settings and has_pending_inventory()
+        if load_settings() != settings:
+            return False
+        if has_pending_inventory():
+            return True
+        if native_telegram_transcription_enabled():
+            from .native_transcription import has_pending_native_transcription
+            return has_pending_native_transcription()
+        return False
     except (OSError, ValueError, RuntimeError):
         return False
 

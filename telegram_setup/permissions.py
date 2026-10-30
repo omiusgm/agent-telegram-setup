@@ -115,9 +115,19 @@ def save_settings(data):
     return data
 
 
+def native_telegram_transcription_enabled():
+    """Explicit backend feature switch; no new agent or chat grant is created."""
+    value = os.environ.get('AGENT_TELEGRAM_NATIVE_TRANSCRIPTION', '0')
+    if value not in ('0', '1'):
+        raise ValueError('Invalid native Telegram transcription feature flag')
+    return value == '1'
+
+
 def exposed_tools(data):
     enabled = set(validate_settings(data)["enabled"])
     extras = {tool for name in enabled for tool in CAPABILITIES[name][2]}
+    if native_telegram_transcription_enabled():
+        extras.update(('agent_transcribe_telegram_voice', 'agent_get_telegram_voice_transcript'))
     optional_reads = {"media": CAPABILITIES["media"][2], "transcribe": ("transcribe_voice",),
                       "download": ("preview_custom_emoji",),
                       "saved-files": ("download_saved_attachment",),
