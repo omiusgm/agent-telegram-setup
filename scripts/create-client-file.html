@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<title>Создать файл приложения для друга</title>
+<style>
+  body { font: 16px/1.5 system-ui, sans-serif; color: #203344; max-width: 35rem; margin: 4rem auto; padding: 0 1.25rem; }
+  label { display: block; margin: 1rem 0; font-weight: 600; }
+  input { box-sizing: border-box; display: block; width: 100%; padding: .6rem; font: inherit; }
+  button { font: inherit; padding: .6rem 1rem; }
+</style>
+<main>
+  <h1>Создать файл приложения</h1>
+  <p>Введите реквизиты своего приложения из API development tools. Передайте готовый файл лично тому, кому разрешаете использовать приложение.</p>
+  <p>Файл содержит ID и Hash в открытом виде. Получатель входит в свой аккаунт со своего телефона.</p>
+  <form autocomplete="off">
+    <label>API ID<input id="app-id" type="password" inputmode="numeric" required pattern="[1-9][0-9]{0,9}" maxlength="10" autocomplete="off"></label>
+    <label>API Hash<input id="app-hash" type="password" required pattern="[0-9a-fA-F]{32}" maxlength="32" autocomplete="off"></label>
+    <button type="submit" disabled>Сохранить telegram-app.tgapp</button>
+  </form>
+  <p id="status" role="status"></p>
+</main>
+<script>
+  'use strict';
+  const form = document.querySelector('form');
+  const status = document.getElementById('status');
+  if (location.protocol === 'file:') {
+    form.querySelector('button').disabled = false;
+  } else {
+    status.textContent = 'Сохраните эту HTML-страницу из репозитория на компьютер и откройте локальную копию.';
+  }
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    if (location.protocol !== 'file:' || !form.reportValidity()) return;
+    const id = document.getElementById('app-id').value;
+    const hash = document.getElementById('app-hash').value;
+    const blob = new Blob(['API_ID=' + id + '\nAPI_HASH=' + hash + '\n'], {type: 'application/octet-stream'});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'telegram-app.tgapp';
+    document.body.append(link);
+    link.click();
+    link.remove();
+    form.reset();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    status.textContent = 'Проверьте файл в загрузках браузера. Получатель выбирает его в локальном мастере на шаге «Вход в Telegram».';
+  });
+</script>
+</html>

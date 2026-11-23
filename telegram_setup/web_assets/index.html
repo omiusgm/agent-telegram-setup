@@ -44,6 +44,8 @@
         <div id="api-fields" class="card" hidden>
           <h3>Ключи приложения для входа</h3>
           <p>Используйте свою пару с <a href="https://my.telegram.org/apps" target="_blank" rel="noreferrer">my.telegram.org/apps</a>. Личные клиенты могут запросить пару приложения у Владимира Кривошеева в Telegram <a href="https://t.me/omius" target="_blank" rel="noreferrer">@omius</a>. Вход подтвердите со своего телефона.</p>
+          <label>Выбрать файл приложения (.tgapp или .env)<input id="api-file" type="file" accept=".tgapp,.env"></label>
+          <small>Если Владимир или друг предоставил вам файл своего приложения, выберите его здесь. Затем нажмите «Войти по QR» и подтвердите вход своим телефоном.</small>
           <label>API ID<input id="api-id" type="password" inputmode="numeric" autocomplete="off" placeholder="Число или обе строки сразу"></label>
           <label>API Hash<input id="api-hash" type="password" autocomplete="off" placeholder="32 символа"></label>
           <small>Получили две строки API_ID=… и API_HASH=…? Скопируйте их вместе и вставьте в поле API ID. Значения скрыты. Не передавайте их агенту.</small>

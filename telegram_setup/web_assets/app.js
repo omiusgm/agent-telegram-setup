@@ -116,11 +116,8 @@ $('permissions-form').addEventListener('submit',async event=>{
   if (enabled.includes('transcribe')&&!transcription_engine) { localError('Выберите способ расшифровки голосовых.'); return; }
   try { await api('install',{enabled,transcription_engine}); await refresh(); } catch(error) { showError(error); }
 });
-$('api-id').addEventListener('paste', event => {
-  const text = event.clipboardData?.getData('text/plain')?.trim();
-  if (!text || !(/[\r\n]/.test(text) || /^API_ID=/i.test(text))) return;
-  event.preventDefault();
-  const pair = /^API_ID=([1-9][0-9]*)\r?\nAPI_HASH=([a-f0-9]{32})$/i.exec(text);
+function fillApiPair(text) {
+  const pair = /^API_ID=([1-9][0-9]*)\r?\nAPI_HASH=([a-f0-9]{32})$/i.exec(text.trim());
   if (!pair) {
     $('api-id').value = $('api-hash').value = '';
     localError('Нужны две строки: API_ID=… и API_HASH=…. Можно также ввести значения по отдельности.');
@@ -129,6 +126,30 @@ $('api-id').addEventListener('paste', event => {
   $('api-id').value = pair[1];
   $('api-hash').value = pair[2];
   notice('Оба поля заполнены. Выберите способ входа.', 'good');
+}
+$('api-id').addEventListener('paste', event => {
+  const text = event.clipboardData?.getData('text/plain')?.trim();
+  if (!text || !(/[\r\n]/.test(text) || /^API_ID=/i.test(text))) return;
+  event.preventDefault();
+  fillApiPair(text);
+});
+$('api-file').addEventListener('change', async event => {
+  const input = event.currentTarget;
+  const file = input.files[0];
+  if (!file) return;
+  $('api-id').value = $('api-hash').value = '';
+  try {
+    if (!/\.(tgapp|env)$/i.test(file.name) || file.size > 1024) {
+      localError('Выберите файл .tgapp или .env размером до 1 КиБ.');
+      return;
+    }
+    const text = await file.text();
+    if (input.files[0] === file) fillApiPair(text);
+  } catch {
+    if (input.files[0] === file) localError('Не удалось прочитать файл приложения.');
+  } finally {
+    if (input.files[0] === file) input.value = '';
+  }
 });
 async function login(method) {
   localErrorState=null;

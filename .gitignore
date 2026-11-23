@@ -6,6 +6,8 @@ __pycache__/
 *.session*
 *.log
 .env*
+*.env
+*.tgapp
 .DS_Store
 dist/
 outputs/
