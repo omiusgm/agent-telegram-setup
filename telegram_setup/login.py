@@ -19,7 +19,8 @@ def api_credentials():
     data = load_credentials()
     if data:
         return data
-    print("Получите свои API ID / API Hash на https://my.telegram.org/apps")
+    print("Введите API ID и API Hash по отдельности. Своя пара доступна на https://my.telegram.org/apps. "
+          "Личные клиенты могут запросить пару приложения у Владимира Кривошеева в Telegram (@omius).")
     raw_id = getpass.getpass("API ID (скрытый ввод): ").strip()
     api_hash = getpass.getpass("API Hash (скрытый ввод): ").strip()
     if not raw_id.isdecimal() or int(raw_id) <= 0 or not re.fullmatch(r"[a-fA-F0-9]{32}", api_hash):

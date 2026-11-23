@@ -31,7 +31,7 @@ const errors = {
   password_attempts_exhausted: 'После трёх попыток вход остановлен. Проверьте пароль двухэтапной защиты в Telegram и попробуйте позднее.',
   flood_wait: 'Telegram ограничил частоту входов. Дождитесь указанного времени.',
   input_closed: 'Время ожидания ввода истекло. Начните вход снова.',
-  invalid_input: 'Проверьте формат введённых данных. Ключи приложения находятся на my.telegram.org/apps.',
+  invalid_input: 'Проверьте формат введённых данных.',
   connection_failed: 'Не удалось связаться с Telegram. Проверьте сеть; сессию удалять не нужно.',
   check_input_or_active_service: 'Проверьте выбранные возможности. Если MCP уже работает, сначала используйте проверку на шаге 3.',
   setup_session_required: 'Откройте мастер заново через его ярлык. Ключ доступа к этой странице действует только до закрытия мастера.',
@@ -116,12 +116,26 @@ $('permissions-form').addEventListener('submit',async event=>{
   if (enabled.includes('transcribe')&&!transcription_engine) { localError('Выберите способ расшифровки голосовых.'); return; }
   try { await api('install',{enabled,transcription_engine}); await refresh(); } catch(error) { showError(error); }
 });
+$('api-id').addEventListener('paste', event => {
+  const text = event.clipboardData?.getData('text/plain')?.trim();
+  if (!text || !(/[\r\n]/.test(text) || /^API_ID=/i.test(text))) return;
+  event.preventDefault();
+  const pair = /^API_ID=([1-9][0-9]*)\r?\nAPI_HASH=([a-f0-9]{32})$/i.exec(text);
+  if (!pair) {
+    $('api-id').value = $('api-hash').value = '';
+    localError('Нужны две строки: API_ID=… и API_HASH=…. Можно также ввести значения по отдельности.');
+    return;
+  }
+  $('api-id').value = pair[1];
+  $('api-hash').value = pair[2];
+  notice('Оба поля заполнены. Выберите способ входа.', 'good');
+});
 async function login(method) {
   localErrorState=null;
   const data={method};
   if (!current?.api_configured) { data.api_id=$('api-id').value.trim(); data.api_hash=$('api-hash').value.trim(); }
   if (!current?.api_configured && (!/^[1-9][0-9]*$/.test(data.api_id) || !/^[a-f0-9]{32}$/i.test(data.api_hash))) {
-    localError('Заполните API ID и API Hash из кабинета Telegram, затем выберите способ входа.'); return;
+    localError('Заполните API ID и API Hash выбранного приложения, затем выберите способ входа.'); return;
   }
   try { await api('login',data); $('api-id').value=$('api-hash').value=''; await refresh(); } catch(error) { showError(error); }
 }

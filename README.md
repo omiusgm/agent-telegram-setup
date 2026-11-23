@@ -41,7 +41,7 @@ Bot token не заменяет API ID / API Hash и пользовательс�
 
 - Компьютер Mac с Git, Python 3.11+ для запуска установщика и [uv от Astral](https://docs.astral.sh/uv/getting-started/installation/). Установщик создаёт отдельную `.venv` с Python 3.11.
 - Telegram на телефоне с действующим входом. При включённой двухэтапной защите понадобится ваш пароль.
-- Собственные API ID и API Hash: откройте [my.telegram.org/apps](https://my.telegram.org/apps), затем **API development tools**. Название приложения, например `Personal Assistant`, короткое имя `personalassistant`, платформа Desktop. Соблюдайте [условия API Telegram](https://core.telegram.org/api/terms).
+- **API ID и API Hash.** Возьмите свою пару с [my.telegram.org/apps](https://my.telegram.org/apps). Личные клиенты Владимира Кривошеева могут запросить пару его приложения в личном Telegram [@omius](https://t.me/omius) и войти в свой аккаунт без регистрации приложения. [Варианты входа и шаблон для лички](docs/start-here.md#app-credentials).
 
 Ключи, номер, код входа и пароль вводятся владельцем локально. Не отправляйте их в чат с агентом и не используйте опубликованные чужие сессии.
 

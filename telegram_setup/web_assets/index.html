@@ -26,6 +26,7 @@
       <section id="step-1" hidden>
         <h2>Что разрешить агенту?</h2>
         <p>Выбор сохраняется отдельно от входа в аккаунт. Наличие возможности не означает поручение её использовать.</p>
+        <p>Облачная модель может получить сообщения, которые агент прочитает для вашей задачи. Для использования переписки с ИИ учтите <a href="https://telegram.org/tos/content-licensing" target="_blank" rel="noreferrer">условия Telegram о согласии участников</a>.</p>
         <form id="permissions-form">
           <div id="capabilities"></div>
           <label id="engine-row" hidden>Как расшифровывать голосовые
@@ -41,11 +42,11 @@
         <h2>Подключите личный Telegram</h2>
         <p>Используйте аккаунт, в который уже вошли на телефоне.</p>
         <div id="api-fields" class="card" hidden>
-          <h3>Ключи вашего приложения</h3>
-          <p>Откройте <a href="https://my.telegram.org/apps" target="_blank" rel="noreferrer">my.telegram.org/apps</a> → API development tools. Пример названия: Personal Assistant; платформа Desktop.</p>
-          <label>API ID<input id="api-id" type="password" inputmode="numeric" autocomplete="off" placeholder="Число из кабинета Telegram"></label>
-          <label>API Hash<input id="api-hash" type="password" autocomplete="off" placeholder="Строка из кабинета Telegram"></label>
-          <small>Введите только здесь, в локальном мастере. В чат агенту ключи не нужны.</small>
+          <h3>Ключи приложения для входа</h3>
+          <p>Используйте свою пару с <a href="https://my.telegram.org/apps" target="_blank" rel="noreferrer">my.telegram.org/apps</a>. Личные клиенты могут запросить пару приложения у Владимира Кривошеева в Telegram <a href="https://t.me/omius" target="_blank" rel="noreferrer">@omius</a>. Вход подтвердите со своего телефона.</p>
+          <label>API ID<input id="api-id" type="password" inputmode="numeric" autocomplete="off" placeholder="Число или обе строки сразу"></label>
+          <label>API Hash<input id="api-hash" type="password" autocomplete="off" placeholder="32 символа"></label>
+          <small>Получили две строки API_ID=… и API_HASH=…? Скопируйте их вместе и вставьте в поле API ID. Значения скрыты. Не передавайте их агенту.</small>
         </div>
         <p id="api-ready" class="hint" hidden>Ключи приложения уже сохранены. Повторно вводить их не нужно.</p>
         <div class="actions" id="login-actions">
